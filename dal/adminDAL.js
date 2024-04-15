@@ -2,6 +2,7 @@ import { fileURLToPath } from "url";
 import fs from "fs";
 import path from "path";
 import pool from "../db/config.js";
+import bcrypt from "bcryptjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -95,7 +96,7 @@ export async function getUserByIdFromDB(id) {
   try {
     conn = await pool.getConnection();
     const sql =
-      "SELECT id, firstname, lastname, username, email, role, verified, created_at, updated_at FROM users WHERE id = ?;";
+      "SELECT id, firstname, lastname, username, email,nickname, role, verified, created_at, updated_at FROM users WHERE id = ?;";
     const result = await conn.query(sql, [id]);
     return result[0]; // Assuming IDs are unique and only one record is returned
   } catch (error) {
@@ -129,23 +130,45 @@ export async function getAllUsers() {
   }
 }
 
-export async function updateUserById(userId, updates) {
+// adminDAL.js
+export async function updateUserInDB(id, updates) {
   let conn;
   try {
     conn = await pool.getConnection();
-    const query =
-      "UPDATE users SET firstname=?, lastname=?, email=?, password=?, role=? WHERE id=?";
-    const params = [
-      updates.firstname,
-      updates.lastname,
-      updates.email,
-      updates.password,
-      updates.role,
-      userId,
-    ];
-    await conn.query(query, params);
-    return await getUserById(userId); // Assuming you have a function to fetch updated user data
+    // First, check if the user exists
+    const user = await conn.query("SELECT 1 FROM users WHERE id = ?", [id]);
+    if (user.length === 0) {
+      throw new Error("User does not exist");
+    }
+
+    // Proceed with update if user exists
+    let sql = "UPDATE users SET ";
+    let updatesArray = [];
+    let params = [];
+
+    for (const key in updates) {
+      if (updates[key] && key !== "password") {
+        updatesArray.push(`${key} = ?`);
+        params.push(updates[key]);
+      }
+    }
+    if (updates.password && updates.password.trim() !== "") {
+      const passwordHash = await bcrypt.hash(updates.password, 10);
+      updatesArray.push("password = ?");
+      params.push(passwordHash);
+    }
+    if (updatesArray.length === 0) {
+      return false; // No updates to make
+    }
+    sql += updatesArray.join(", ") + " WHERE id = ?";
+    params.push(id);
+
+    const result = await conn.query(sql, params);
+    if (result.affectedRows === 0) {
+      return false; // No rows updated
+    }
+    return true;
   } finally {
-    if (conn) conn.release();
+    if (conn) await conn.release();
   }
 }

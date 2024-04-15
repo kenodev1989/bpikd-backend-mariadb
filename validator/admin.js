@@ -1,5 +1,5 @@
 // Import Joi using ES6 module syntax
-import Joi from 'joi';
+import Joi from "joi";
 
 // Define your schemas
 const signUpSchema = Joi.object({
@@ -35,7 +35,7 @@ const defaults = {
 };
 
 // Define a function to format messages
-const message = (error) => `${error.details.map((x) => x.message).join(', ')}`;
+const message = (error) => `${error.details.map((x) => x.message).join(", ")}`;
 
 // Export your schemas, defaults, and message function
 export { signUpSchema, logInSchema, updateSchema, defaults, message };

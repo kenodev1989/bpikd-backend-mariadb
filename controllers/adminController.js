@@ -6,6 +6,8 @@ import {
   errorHandler,
 } from "../middleware/response-handler.js";
 
+import { defaults, updateSchema } from "../validator/admin.js";
+
 export async function register(req, res) {
   try {
     // Destructure all necessary fields from req.body
@@ -177,39 +179,30 @@ export async function getUserById(id) {
   }
 }
 
+// In your adminController.js
 export async function updateUser(req, res) {
   try {
-    const { error, value } = validator.updateSchema.validate(
-      req.body,
-      validator.defaults
-    );
+    const { error, value } = updateSchema.validate(req.body, defaults);
     if (error) {
-      return errorHandler(403, res, error.message);
+      return errorHandler(res, 403, error.message);
     }
 
     const isAdmin = req.user.role === "admin";
-    const targetUserId =
-      isAdmin && req.params.userId ? req.params.userId : req.user.id;
+    const targetUserId = isAdmin && req.params.id ? req.params.id : req.user.id;
 
-    // Hash new password if provided
-    if (value.password) {
-      value.password = await bcrypt.hash(value.password, 10);
+    // Update user in the database
+    const updateSuccess = await adminDAL.updateUserInDB(targetUserId, value);
+    if (!updateSuccess) {
+      throw new Error("Failed to update user");
     }
 
-    // Update user data in the database
-    const updatedUser = await adminDAL.updateUserById(targetUserId, value);
-    if (!updatedUser) {
-      return errorHandler(404, res, "No user found!");
-    }
-
-    // Remove password from user data before sending response
-    const userDataToReturn = { ...updatedUser };
-    delete userDataToReturn.password;
-
-    responseHandler(res, userDataToReturn, "User updated successfully");
+    // Optionally retrieve and send updated user data
+    const updatedUser = await adminDAL.getUserByIdFromDB(targetUserId);
+    delete updatedUser.password; // Remove password for security reasons
+    responseHandler(res, updatedUser, "User updated successfully");
   } catch (err) {
-    console.error(err);
-    errorHandler(500, res, err.message);
+    console.error("Error in updateUser Controller:", err);
+    errorHandler(res, 500, err.message || "Failed to update user.");
   }
 }
 

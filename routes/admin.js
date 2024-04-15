@@ -5,7 +5,6 @@ import {
   getUser,
   updateUser,
   getAllUsers,
-  getUserById,
   handleDeleteMultipleUsers,
   handleDeleteUser,
   getUserByIdController,
@@ -36,7 +35,7 @@ router
 
 // Parameterized routes for user operations
 router.get("/user/:id", verifyToken, getUserByIdController);
-router.put("/user/:userId", verifyToken, updateUser);
-router.delete("/user/:userId", verifyToken, authorizeAdmin, handleDeleteUser);
+router.put("/user/:id", verifyToken, updateUser);
+router.delete("/user/:id", verifyToken, authorizeAdmin, handleDeleteUser);
 // Export the router using ES6 default export
 export default router;
