@@ -1,6 +1,6 @@
 import pool from "./config.js";
 
-export const createTable = async () => {
+export const createTableUsers = async () => {
   let conn;
   try {
     conn = await pool.getConnection();
@@ -27,3 +27,12 @@ export const createTable = async () => {
     if (conn) await conn.end();
   }
 };
+
+/* CREATE TABLE footer_companies (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    company VARCHAR(255),
+    description TEXT,
+    url VARCHAR(255),
+    src VARCHAR(255),
+    last_updated DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+); */
