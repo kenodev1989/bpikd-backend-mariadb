@@ -1,6 +1,7 @@
 import express from "express";
 import userRoutes from "./admin.js";
-/* import postRoutes from "./postRoutes.js"; */
+import headerRoutes from "./headerRoutes.js";
+import personsRoutes from "./personsRoutes.js";
 import footerRoutes from "./footerRoutes.js";
 /* import sortRoutes from "./sortRoutes.js"; */
 
@@ -17,6 +18,10 @@ app.use('/sort', sortRoutes); */
 app.use("/uploads", express.static("public/uploads"));
 
 app.use("/footer", footerRoutes);
+
+app.use("/header", headerRoutes);
+
+app.use("/post/persons", personsRoutes);
 /* app.use("/words", wordsRoutes); */
 
 export default app;

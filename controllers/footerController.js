@@ -20,14 +20,17 @@ const storage = multer.diskStorage({
     const match = file.fieldname.match(/companyImage-(\d+)/);
     const index = match ? match[1] : "default";
     const fileExtension = path.extname(file.originalname);
+
+    // This filename will be consistent for the same field, causing new uploads to overwrite older ones
     const filename = `companyImage-${index}${fileExtension}`;
     cb(null, filename);
   },
 });
 
-const upload = multer({
+// Existing Multer configuration
+export const upload = multer({
   storage: storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB limit for files
+  limits: { fileSize: 10 * 1024 * 1024 }, // Limit the file size
   fileFilter: function (req, file, cb) {
     const filetypes = /jpeg|jpg|png|gif/;
     const isFileTypeAllowed =
@@ -36,18 +39,26 @@ const upload = multer({
     if (isFileTypeAllowed) {
       cb(null, true);
     } else {
-      cb("Error: Only images are allowed! (JPEG, JPG, PNG, GIF)");
+      // Call callback with an error message
+      cb(new Error("Only images are allowed! (JPEG, JPG, PNG, GIF)"));
     }
   },
-});
-
-export const uploadMiddleware = upload.fields([
+}).fields([
   { name: "companyImage-0" },
   { name: "companyImage-1" },
   { name: "companyImage-2" },
   { name: "companyImage-3" },
   { name: "companyImage-4" },
 ]);
+
+/* 
+export const uploadMiddleware = upload.fields([
+  { name: "companyImage-0" },
+  { name: "companyImage-1" },
+  { name: "companyImage-2" },
+  { name: "companyImage-3" },
+  { name: "companyImage-4" },
+]); */
 
 function replacer(key, value) {
   if (typeof value === "bigint") {

@@ -36,3 +36,92 @@ export const createTableUsers = async () => {
     src VARCHAR(255),
     last_updated DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ); */
+
+const mysql = require("mysql2/promise");
+
+async function initializeDatabase() {
+  const connection = await mysql.createConnection({
+    host: "your_host",
+    user: "your_username",
+    password: "your_password",
+    database: "your_database",
+  });
+
+  try {
+    // Create the 'persons' table
+    await connection.execute(`
+            CREATE TABLE IF NOT EXISTS persons (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                firstName VARCHAR(255),
+                lastName VARCHAR(255),
+                aboutPerson TEXT,
+                featured VARCHAR(255),
+                createdBy VARCHAR(255),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            );
+        `);
+
+    // Create the 'works' table
+    await connection.execute(`
+            CREATE TABLE IF NOT EXISTS works (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                person_id INT,
+                title VARCHAR(255),
+                content TEXT,
+                publishTime VARCHAR(255),
+                isPublished BOOLEAN,
+                scheduledPublishTime DATETIME,
+                externalSource VARCHAR(255),
+                createdBy VARCHAR(255),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (person_id) REFERENCES persons(id) ON DELETE CASCADE
+            );
+        `);
+
+    // Create the 'media' table
+    await connection.execute(`
+            CREATE TABLE IF NOT EXISTS media (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                work_id INT,
+                url VARCHAR(255),
+                name VARCHAR(255),
+                fileType VARCHAR(255),
+                FOREIGN KEY (work_id) REFERENCES works(id) ON DELETE CASCADE
+            );
+        `);
+
+    console.log("All tables created or already exist");
+  } catch (error) {
+    console.error("Error creating tables:", error);
+  } finally {
+    await connection.end();
+  }
+}
+
+/* initializeDatabase(); */
+
+/* CREATE TABLE IF NOT EXISTS works (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    person_id INT,
+    title VARCHAR(255),
+    content TEXT,
+    publishTime VARCHAR(255),
+    isPublished BOOLEAN,
+    scheduledPublishTime DATETIME,
+    externalSource VARCHAR(255),
+    createdBy VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB; -- specifying engine might be important
+
+-- Ensure the media table is defined correctly
+CREATE TABLE IF NOT EXISTS media (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    work_id INT,
+    url VARCHAR(255),
+    name VARCHAR(255),
+    fileType VARCHAR(255),
+    FOREIGN KEY (work_id) REFERENCES works(id) ON DELETE CASCADE
+) ENGINE=InnoDB;  -- specifying engine might be important */

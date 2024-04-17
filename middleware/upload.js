@@ -1,13 +1,13 @@
-import multer from 'multer';
-import path from 'path';
+import multer from "multer";
+import path from "path";
 
 // Set storage engine
 const storage = multer.diskStorage({
-  destination: './public/uploads/',
+  destination: "./public/uploads/",
   filename: function (req, file, cb) {
     cb(
       null,
-      file.fieldname + '-' + Date.now() + path.extname(file.originalname)
+      file.fieldname + "-" + Date.now() + path.extname(file.originalname)
     );
   },
 });
@@ -20,11 +20,11 @@ export const upload = multer({
     checkFileType(file, cb);
   },
 }).fields([
-  { name: 'images' },
-  { name: 'videos' },
-  { name: 'audios' },
-  { name: 'documents' },
-  { name: 'featuredImage' },
+  { name: "images" },
+  { name: "videos" },
+  { name: "audios" },
+  { name: "documents" },
+  { name: "featuredImage" },
 ]); // Adjust 'maxCount' as needed
 
 // Check file type
@@ -39,6 +39,6 @@ function checkFileType(file, cb) {
   if (mimetype && extname) {
     return cb(null, true);
   } else {
-    cb('Error: Files Only!');
+    cb("Error: Files Only!");
   }
 }
