@@ -1,4 +1,4 @@
-/* import express from "express";
+import express from "express";
 
 import {
   getAllSortedItems,
@@ -8,6 +8,6 @@ import {
 const router = express.Router();
 
 router.get("/", getAllSortedItems);
-router.put("/", updateOrCreateSortItems);
+router.put("/data", updateOrCreateSortItems);
 
-export default router; */
+export default router;

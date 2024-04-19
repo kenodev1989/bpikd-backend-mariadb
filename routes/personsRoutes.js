@@ -10,18 +10,26 @@ import {
   deletePerson,
   getAllPersonsWithData,
   getPersonBasics,
+  getPersonWithWorksAndMedia,
+  getPersonWithWorksAndMediaById,
+  searchPersonsByPartialName,
 } from "../controllers/personController.js";
 
 const router = express.Router();
 
 router.route("/").post(verifyToken, upload, addOrUpdatePersonAndWork);
 
-router.get("/basic", verifyToken, getPersonBasics);
+router.get("/basic", getPersonBasics);
 
 router.get("/list", verifyToken, getAllPersonsWithData);
 // Route to delete multiple persons
-router.post("/delete-multiple", deleteMultiplePersons);
 
+router.get("/allData", getPersonWithWorksAndMedia);
+
+router.get("/find", searchPersonsByPartialName);
+router.post("/delete-multiply", verifyToken, deleteMultiplePersons);
+
+router.get("/allData/:personId", getPersonWithWorksAndMediaById);
 // Route to delete a single person
 router.delete("/:personId", deletePerson);
 

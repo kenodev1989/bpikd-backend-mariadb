@@ -3,16 +3,16 @@ import userRoutes from "./admin.js";
 import headerRoutes from "./headerRoutes.js";
 import personsRoutes from "./personsRoutes.js";
 import footerRoutes from "./footerRoutes.js";
-/* import sortRoutes from "./sortRoutes.js"; */
+import sortRoutes from "./sortRoutes.js";
 
 /* const wordsRoutes = require("./words"); */
 
 const app = express();
 
 app.use("/", userRoutes);
-/* app.use('/post', postRoutes);
+/* app.use('/post', postRoutes); */
 
-app.use('/sort', sortRoutes); */
+app.use("/sort", sortRoutes);
 
 // Serve static files from the public/uploads directory
 app.use("/uploads", express.static("public/uploads"));

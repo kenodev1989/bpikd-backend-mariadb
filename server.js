@@ -47,3 +47,33 @@ const PORT = process.env.PORT || 3000; // Providing a default port if none speci
 app.listen(PORT, () => {
   console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
 });
+
+/*  "works": [
+        {
+            "title": "Bašta sljezove boje",
+            "content": "h created an obstacle as this would violate laws forbidding German arms sales to  the Middle East.",
+            "publishTime": "Now",
+            "isPublished": true,
+            "scheduledPublishTime": "2024-04-01T13:50:36.161Z",
+            "externalSource": null,
+            "media": [
+                {
+                    "images": [
+                        {
+                            "url": "https://bpikd-backend-test.up.railway.app/uploads/images-1711979436183.png",
+                            "_id": "660abbacf30948c5b8041ab5"
+                        }
+                    ],
+                    "audios": [
+                        {
+                            "url": "https://bpikd-backend-test.up.railway.app/uploads/audios-1711979436184.mp3",
+                            "name": "[DEMO 30 seconds] Piloti - Kao ptica na mom dlanu (lyrics).mp3",
+                            "fileType": "audio/mpeg",
+                            "_id": "660abbacf30948c5b8041ab6"
+                        }
+                    ],
+                    "videos": [],
+                    "documents": [],
+                    "_id": "660abbacf30948c5b8041ab4"
+                }
+            ], */
