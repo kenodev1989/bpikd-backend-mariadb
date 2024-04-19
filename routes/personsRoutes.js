@@ -24,12 +24,12 @@ router.get("/basic", getPersonBasics);
 router.get("/list", verifyToken, getAllPersonsWithData);
 // Route to delete multiple persons
 
-router.get("/allData", getPersonWithWorksAndMedia);
+router.get("/data", getPersonWithWorksAndMedia);
 
 router.get("/find", searchPersonsByPartialName);
 router.post("/delete-multiply", verifyToken, deleteMultiplePersons);
 
-router.get("/allData/:personId", getPersonWithWorksAndMediaById);
+router.get("/data/:personId", getPersonWithWorksAndMediaById);
 // Route to delete a single person
 router.delete("/:personId", deletePerson);
 

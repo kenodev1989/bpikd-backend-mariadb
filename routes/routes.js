@@ -4,6 +4,7 @@ import headerRoutes from "./headerRoutes.js";
 import personsRoutes from "./personsRoutes.js";
 import footerRoutes from "./footerRoutes.js";
 import sortRoutes from "./sortRoutes.js";
+import postRoutes from "./postRoutes.js";
 
 /* const wordsRoutes = require("./words"); */
 
@@ -22,6 +23,8 @@ app.use("/footer", footerRoutes);
 app.use("/header", headerRoutes);
 
 app.use("/post/persons", personsRoutes);
+
+app.use("/post/news", postRoutes);
 /* app.use("/words", wordsRoutes); */
 
 export default app;

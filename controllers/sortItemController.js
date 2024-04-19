@@ -22,7 +22,7 @@ export const updateOrCreateSortItems = async (req, res) => {
     let sortItemId;
 
     if (existingSortItem) {
-      sortItemId = existingSortItem[0].id;
+      sortItemId = existingSortItem.id;
       console.log("Using existing sort item ID:", sortItemId);
     } else {
       let result = await connection.query(
