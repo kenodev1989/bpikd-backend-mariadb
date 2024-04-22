@@ -4,20 +4,29 @@ import { verifyToken } from "../middleware/auth.js";
 import { upload } from "../middleware/upload.js";
 import {
   addNews,
+  addOrUpdatePagesPost,
   deleteMultipleNewsPosts,
   deleteNewsPost,
+  getPagePost,
   getAllNews,
   getNewsById,
 } from "../controllers/postController.js";
 
 const router = express.Router();
 
-router.post("/", verifyToken, upload, addNews);
+router.post("/news", verifyToken, upload, addNews);
+router.post("/about", verifyToken, upload, addOrUpdatePagesPost);
+router.post("/button2", verifyToken, upload, addOrUpdatePagesPost);
+router.post("/shop", verifyToken, upload, addOrUpdatePagesPost);
 
-router.get("/", getAllNews);
-router.post("/delete-multiply", deleteMultipleNewsPosts);
-router.delete("/:postId", deleteNewsPost);
-router.get("/:id", getNewsById);
+router.post("/news/delete-multiply", deleteMultipleNewsPosts);
+router.get("/news", getAllNews);
+
+router.post("/soon", verifyToken, upload, addOrUpdatePagesPost);
+
+router.get("/page/:category", getPagePost);
+router.delete("/news/:postId", deleteNewsPost);
+router.get("/news/:id", getNewsById);
 
 // Route to get all news items
 /* router.get("/news", getAllNews); */

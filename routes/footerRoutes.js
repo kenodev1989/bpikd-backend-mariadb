@@ -6,8 +6,6 @@ import {
 } from "../controllers/footerController.js";
 
 import { verifyToken } from "../middleware/auth.js";
-import { authorizeAdmin } from "../middleware/response-handler.js";
-/* import { authorizeAdmin } from "../middleware/response-handler.js"; */
 
 const router = express.Router();
 

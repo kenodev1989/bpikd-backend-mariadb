@@ -178,3 +178,152 @@ export const deleteMultipleNewsPosts = async (req, res) => {
     }
   }
 };
+
+export const addOrUpdatePagesPost = async (req, res) => {
+  let data;
+
+  try {
+    if (typeof req.body.data === "string") {
+      data = JSON.parse(req.body.data);
+    } else {
+      data = req.body;
+    }
+  } catch (error) {
+    return res.status(400).json({ error: "Invalid JSON data provided." });
+  }
+
+  const {
+    title,
+    content,
+    publishTime,
+    scheduledPublishTime,
+    externalSource,
+    visibility,
+    isPublished,
+    category,
+  } = data;
+
+  let featuredImage;
+  if (req.files?.featuredImage?.[0]) {
+    const file = req.files.featuredImage[0];
+    featuredImage = `${req.protocol}://${req.get("host")}/uploads/${
+      file.filename
+    }`;
+  } else {
+    featuredImage = null;
+  }
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    await conn.beginTransaction();
+    console.log(data);
+
+    const path = data.category.toLowerCase();
+
+    console.log(path);
+
+    const [existing] = await conn.query(`SELECT id FROM ${path} LIMIT 1`);
+
+    let postId = existing ? existing.id : null;
+
+    if (postId) {
+      await conn.query(
+        `UPDATE ${path} SET 
+        title=?, content=?, publishTime=?, scheduledPublishTime=?,
+        externalSource=?, visibility=?, isPublished=?, featured=? ,category=?, createdBy='admin'
+        WHERE id=?`,
+        [
+          title,
+          content,
+          publishTime ? new Date(publishTime) : null,
+          scheduledPublishTime ? new Date(scheduledPublishTime) : null,
+          externalSource,
+          visibility,
+          isPublished,
+          featuredImage,
+          category,
+          existing.id,
+        ]
+      );
+    } else {
+      await conn.query(
+        `INSERT INTO ${path} 
+        (title, content, publishTime, scheduledPublishTime, externalSource, 
+        visibility, isPublished, featured, category, createdBy) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?,?, 'admin')`,
+        [
+          title,
+          content,
+          publishTime ? new Date(publishTime) : null,
+          scheduledPublishTime ? new Date(scheduledPublishTime) : null,
+          externalSource,
+          visibility,
+          isPublished,
+          featuredImage,
+          category,
+        ]
+      );
+    }
+
+    await conn.commit();
+    res.json({ message: "Page post updated successfully" });
+  } catch (error) {
+    await conn.rollback();
+    console.error("Failed to add or update about post:", error);
+    res
+      .status(500)
+      .json({ error: "Internal Server Error", details: error.message });
+  } finally {
+    if (conn) {
+      conn.release();
+    }
+  }
+};
+
+/* export const getPagePost = async (req, res) => {
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    const [rows] = await conn.query("SELECT * FROM about LIMIT 1");
+    if (rows.length === 0) {
+      res.status(404).json({ message: "About post not found" });
+    } else {
+      res.json(rows);
+    }
+  } catch (error) {
+    console.error("Error fetching about post:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  } finally {
+    if (conn) conn.release();
+  }
+};
+ */
+
+export const getPagePost = async (req, res) => {
+  const category = req.params.category;
+  const allowedTables = ["about", "button1", "button2", "soon", "shop"]; // list of allowed tables to prevent SQL injection
+  let conn;
+
+  if (!allowedTables.includes(category)) {
+    return res.status(400).json({ message: "Invalid category" });
+  }
+
+  try {
+    conn = await pool.getConnection();
+    const safeCategory = conn.escapeId(category); // Escaping identifier to prevent SQL Injection
+    const query = `SELECT * FROM ${safeCategory} LIMIT 1`;
+    const [rows] = await conn.query(query, [category]); // Safely passing table name as a parameter
+
+    if (rows.length === 0) {
+      res.status(404).json({ message: `${category} post not found` });
+    } else {
+      res.json(rows);
+    }
+  } catch (error) {
+    console.error(`Error fetching ${category} post:`, error);
+    res.status(500).json({ message: "Internal Server Error" });
+  } finally {
+    if (conn) conn.release();
+  }
+};
