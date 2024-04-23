@@ -1,12 +1,14 @@
 import mariadb from "mariadb";
+import dotenv from "dotenv";
+dotenv.config();
 
-// Database configuration details from environment variables or default values
 const pool = mariadb.createPool({
-  host: process.env.DB_HOST || "keni.ba",
-  user: process.env.DB_USER || "keniba_bpikd",
-  port: "3306",
-  password: process.env.DB_PASS || "bpikd123bpikd123",
-  database: process.env.DB_NAME || "keniba_bpikd",
+  host: process.env.NODE_DB_HOST,
+  user: process.env.NODE_DB_USER,
+  port: process.env.NODE_DB_PORT,
+  password: process.env.NODE_DB_PASS,
+  database: process.env.NODE_DB_NAME,
+  connectTimeout: 20000,
 });
 
 export default pool;
