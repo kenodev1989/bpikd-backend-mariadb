@@ -88,6 +88,7 @@ export const getHeaderConfig = async (req, res) => {
 
     if (results.length > 0) {
       const config = results[0];
+
       res.json({
         id: config.id,
         routes: safeParse(config.routes),

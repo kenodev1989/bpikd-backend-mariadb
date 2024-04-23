@@ -41,6 +41,18 @@ const upload = multer({
   { name: "partnersImages-6", maxCount: 1 },
   { name: "partnersImages-7", maxCount: 1 },
   { name: "partnersImages-8", maxCount: 1 },
+  { name: "partnersImages-9", maxCount: 1 },
+  { name: "partnersImages-10", maxCount: 1 },
+  { name: "partnersImages-11", maxCount: 1 },
+  { name: "partnersImages-12", maxCount: 1 },
+  { name: "partnersImages-13", maxCount: 1 },
+  { name: "partnersImages-14", maxCount: 1 },
+  { name: "partnersImages-15", maxCount: 1 },
+  { name: "partnersImages-16", maxCount: 1 },
+  { name: "partnersImages-17", maxCount: 1 },
+  { name: "partnersImages-18", maxCount: 1 },
+  { name: "partnersImages-19", maxCount: 1 },
+  { name: "partnersImages-20", maxCount: 1 },
 ]);
 
 router.post("/", upload, async (req, res) => {
