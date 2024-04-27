@@ -128,9 +128,25 @@ export const searchItems = async (req, res) => {
       }
 
       if (excludeWords) {
-        excludeWords.forEach((word) => {
-          queryPart += ' AND title NOT LIKE ? AND content NOT LIKE ?';
-          params.push(`%${word.trim()}%`, `%${word.trim()}%`);
+        // Ensure excludeWords is treated as an array, even if it's a single string
+        const wordsArray = Array.isArray(excludeWords)
+          ? excludeWords
+          : excludeWords.split(',');
+
+        wordsArray.forEach((word) => {
+          word = word.trim();
+          if (word) {
+            // Check if the word is not empty after trimming
+            if (table === 'persons') {
+              // Using firstName and lastName for persons
+              queryPart += ` AND firstName NOT LIKE ? AND lastName NOT LIKE ?`;
+              params.push(`%${word}%`, `%${word}%`);
+            } else {
+              // Using title and content for other tables, specifying the table name to avoid ambiguity
+              queryPart += ` AND ${table}.title NOT LIKE ? AND ${table}.content NOT LIKE ?`;
+              params.push(`%${word}%`, `%${word}%`);
+            }
+          }
         });
       }
 
@@ -171,19 +187,25 @@ export const searchItems = async (req, res) => {
         }
       }
 
-      queryPart += ` ${getOrderByClause(sort, table)}`;
+      // Append the dynamic ORDER BY clause
+      const orderByClause = getOrderByClause(sort, table);
+      if (orderByClause) {
+        queryPart += ` ${orderByClause}`;
+      }
 
       queryPart += ')'; // Closing the subquery
-
       sqlParts.push(queryPart);
+
+      console.log(`Query for table ${table}:`, queryPart);
     });
 
     const fullSql = sqlParts.join(' UNION ALL ') + ' LIMIT ? OFFSET ?';
     params.push(limit, (page - 1) * limit);
 
+    console.log('Executing SQL:', fullSql, params);
+
     const results = await pool.query(fullSql, params);
     const totalResults = results.length;
-
     const pages = Math.ceil(totalResults / limit);
 
     res.json({ data: results, totalResults, pages });
@@ -194,31 +216,43 @@ export const searchItems = async (req, res) => {
 };
 
 // Define a function to determine the ORDER BY clause
-
 const getOrderByClause = (sort, table) => {
   console.log(`Sorting for table: ${table} with sort parameter: ${sort}`);
 
-  const validSortColumns = {
-    works: ['publishTime', 'created_at'],
-    news: ['publishTime', 'created_at'],
-    persons: ['created_at'],
-    soon: ['created_at'],
+  // Explicitly define how each sort option translates to SQL for each table
+  const sortOptions = {
+    release_desc: {
+      news: 'scheduledPublishTime DESC',
+      works: 'works.scheduledPublishTime DESC',
+      soon: 'scheduledPublishTime DESC',
+      // Assuming 'persons' does not use publishTime, no entry is needed
+    },
+    release_asc: {
+      news: 'scheduledPublishTime ASC',
+      works: 'works.publishTime ASC',
+      soon: 'scheduledPublishTime ASC',
+    },
+    document_desc: {
+      news: 'created_at DESC',
+      works: 'works.created_at DESC',
+      persons: 'created_at DESC',
+      soon: 'created_at DESC',
+    },
+    document_asc: {
+      news: 'created_at ASC',
+      works: 'works.created_at ASC',
+      persons: 'created_at ASC',
+      soon: 'created_at ASC',
+    },
   };
 
-  const sortDirection = sort.endsWith('_desc') ? 'DESC' : 'ASC';
-  const sortField = sort.replace(/_(asc|desc)$/, '');
-
-  console.log(
-    `Determined sort field: ${sortField} and direction: ${sortDirection}`
-  );
-
-  // Check if the table has the sort field
-  if (validSortColumns[table] && validSortColumns[table].includes(sortField)) {
-    const orderByClause = `ORDER BY ${table}.${sortField} ${sortDirection}`;
+  // Determine the correct SQL fragment based on the table and sort parameter
+  if (sortOptions[sort] && sortOptions[sort][table]) {
+    const orderByClause = sortOptions[sort][table];
     console.log(`Generated ORDER BY clause: ${orderByClause}`);
-    return orderByClause;
+    return `ORDER BY ${orderByClause}`;
   }
 
   console.log(`No valid sort field found for ${table} with sort ${sort}`);
-  return ''; // Default to no ORDER BY clause if not valid or not applicable
+  return ''; // Default to no specific ORDER BY clause if not valid or not applicable
 };

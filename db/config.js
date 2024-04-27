@@ -1,5 +1,5 @@
-import mariadb from "mariadb";
-import dotenv from "dotenv";
+import mariadb from 'mariadb';
+import dotenv from 'dotenv';
 dotenv.config();
 
 const pool = mariadb.createPool({

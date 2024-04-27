@@ -1,8 +1,8 @@
-import express from "express";
+import express from 'express';
 
-import { verifyToken } from "../middleware/auth.js";
-import { authorizeAdmin } from "../middleware/response-handler.js";
-import { upload } from "../middleware/upload.js";
+import { verifyToken } from '../middleware/auth.js';
+import { authorizeAdmin } from '../middleware/response-handler.js';
+import { upload } from '../middleware/upload.js';
 
 import {
   addOrUpdatePersonAndWork,
@@ -13,24 +13,24 @@ import {
   getPersonWithWorksAndMedia,
   getPersonWithWorksAndMediaById,
   searchPersonsByPartialName,
-} from "../controllers/personController.js";
+} from '../controllers/personController.js';
 
 const router = express.Router();
 
-router.route("/").post(verifyToken, upload, addOrUpdatePersonAndWork);
+router.route('/').post(verifyToken, upload, addOrUpdatePersonAndWork);
 
-router.get("/basic", getPersonBasics);
+router.get('/basic', getPersonBasics);
 
-router.get("/list", verifyToken, getAllPersonsWithData);
+router.get('/list', getAllPersonsWithData);
 // Route to delete multiple persons
 
-router.get("/data", getPersonWithWorksAndMedia);
+router.get('/data', getPersonWithWorksAndMedia);
 
-router.get("/find", searchPersonsByPartialName);
-router.post("/delete-multiply", verifyToken, deleteMultiplePersons);
+router.get('/find', searchPersonsByPartialName);
+router.post('/delete-multiply', verifyToken, deleteMultiplePersons);
 
-router.get("/data/:personId", getPersonWithWorksAndMediaById);
+router.get('/data/:personId', getPersonWithWorksAndMediaById);
 // Route to delete a single person
-router.delete("/:personId", deletePerson);
+router.delete('/:personId', deletePerson);
 
 export default router;

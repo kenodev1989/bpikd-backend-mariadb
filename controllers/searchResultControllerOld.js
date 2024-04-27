@@ -146,3 +146,44 @@ export const searchItems = async (req, res) => {
     res.status(500).send('Error during search');
   }
 };
+
+const getOrderByClause = (sort, table) => {
+  console.log(`Sorting for table: ${table} with sort parameter: ${sort}`);
+
+  // Explicitly define how each sort option translates to SQL for each table
+  const sortOptions = {
+    release_desc: {
+      news: 'scheduledPublishTime DESC',
+      works: 'works.scheduledPublishTime DESC',
+      soon: 'scheduledPublishTime DESC',
+      // Assuming 'persons' does not use publishTime, no entry is needed
+    },
+    release_asc: {
+      news: 'scheduledPublishTime ASC',
+      works: 'works.publishTime ASC',
+      soon: 'scheduledPublishTime ASC',
+    },
+    document_desc: {
+      news: 'created_at DESC',
+      works: 'works.created_at DESC',
+      persons: 'created_at DESC',
+      soon: 'created_at DESC',
+    },
+    document_asc: {
+      news: 'created_at ASC',
+      works: 'works.created_at ASC',
+      persons: 'created_at ASC',
+      soon: 'created_at ASC',
+    },
+  };
+
+  // Determine the correct SQL fragment based on the table and sort parameter
+  if (sortOptions[sort] && sortOptions[sort][table]) {
+    const orderByClause = sortOptions[sort][table];
+    console.log(`Generated ORDER BY clause: ${orderByClause}`);
+    return `ORDER BY ${orderByClause}`;
+  }
+
+  console.log(`No valid sort field found for ${table} with sort ${sort}`);
+  return ''; // Default to no specific ORDER BY clause if not valid or not applicable
+};
