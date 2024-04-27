@@ -13,11 +13,9 @@ export const searchItems = async (req, res) => {
     createdEndDate,
     publishStartDate,
     publishEndDate,
-    page = 1,
-    limit = 10,
+    page,
+    limit = 4,
   } = req.body.query;
-
-  console.log('Received query:', req.body.query);
 
   try {
     const tables = ['news', 'works', 'persons', 'soon'];
@@ -31,14 +29,14 @@ export const searchItems = async (req, res) => {
       let countPart = '';
       // Customize SQL based on the table structure
       if (table === 'persons') {
-        queryPart = `(SELECT 'persons' AS source_table, id, CONCAT(firstName, ' ', lastName) AS title, aboutPerson AS content, createdBy, created_at, externalSource, category FROM persons WHERE 1=1`;
+        queryPart = `(SELECT 'persons' AS source_table, id, CONCAT(firstName, ' ', lastName) AS title, aboutPerson AS content, createdBy, created_at, externalSource, category, scheduledPublishTime FROM persons WHERE 1=1`;
       } else if (table === 'works') {
         // Join the persons table to get firstName and lastName for each work
-        queryPart = `(SELECT 'works' AS source_table, CONCAT(persons.firstName, ' ', persons.lastName) AS person_id, works.title, works.content, works.createdBy, works.created_at, works.externalSource, works.category 
+        queryPart = `(SELECT 'works' AS source_table, CONCAT(persons.firstName, ' ', persons.lastName) AS person_id, works.title, works.content, works.createdBy, works.created_at, works.externalSource, works.category, works.scheduledPublishTime
                 FROM works 
                 JOIN persons ON works.person_id = persons.id WHERE 1=1`;
       } else {
-        queryPart = `(SELECT '${table}' AS source_table, id, title, content, createdBy, created_at, externalSource, category FROM ${table} WHERE 1=1`;
+        queryPart = `(SELECT '${table}' AS source_table, id, title, content, createdBy, created_at, externalSource, category, scheduledPublishTime FROM ${table} WHERE 1=1`;
       }
 
       // Copy the setup for queryPart, modify as needed for counting
@@ -101,6 +99,7 @@ export const searchItems = async (req, res) => {
       if (anyWords && anyWords.length > 0) {
         // Start the condition string with opening parenthesis for the OR conditions
         queryPart += ' AND (';
+        countPart += ' AND (';
 
         // Map over each word to create an SQL condition for it
         const conditions = anyWords
@@ -110,6 +109,7 @@ export const searchItems = async (req, res) => {
             if (word) {
               // Push the parameters for each condition into the params array twice, once for title and once for content
               params.push(`%${word}%`, `%${word}%`);
+              countParams.push(`%${word}%`, `%${word}%`);
               // Return the SQL condition part for this word
 
               const fields =
@@ -125,6 +125,7 @@ export const searchItems = async (req, res) => {
 
         // Append the combined conditions to the queryPart and close the parenthesis
         queryPart += conditions + ')';
+        countPart += conditions + ')';
       }
 
       if (excludeWords) {
@@ -140,11 +141,15 @@ export const searchItems = async (req, res) => {
             if (table === 'persons') {
               // Using firstName and lastName for persons
               queryPart += ` AND firstName NOT LIKE ? AND lastName NOT LIKE ?`;
+              countPart += ` AND firstName NOT LIKE ? AND lastName NOT LIKE ?`;
               params.push(`%${word}%`, `%${word}%`);
+              countParams.push(`%${word}%`, `%${word}%`);
             } else {
               // Using title and content for other tables, specifying the table name to avoid ambiguity
               queryPart += ` AND ${table}.title NOT LIKE ? AND ${table}.content NOT LIKE ?`;
+              countPart += ` AND ${table}.title NOT LIKE ? AND ${table}.content NOT LIKE ?`;
               params.push(`%${word}%`, `%${word}%`);
+              countParams.push(`%${word}%`, `%${word}%`);
             }
           }
         });
@@ -155,104 +160,137 @@ export const searchItems = async (req, res) => {
         queryPart += ` AND ${table}.category IN (${categoryList})`;
         countPart += ` AND ${table}.category IN (${categoryList})`;
         params.push(...categories);
+        countParams.push(...categories);
       }
 
       if (externalSources) {
-        console.log('Applying externalSource filter on table', table);
         queryPart += ` AND ${table}.externalSource IS NOT NULL AND ${table}.externalSource <> ""`;
+        countPart += ` AND ${table}.externalSource IS NOT NULL AND ${table}.externalSource <> ""`;
+        params.push(externalSources);
+        countParams.push(externalSources);
       }
       // Date range filters
       if (createdStartDate) {
         queryPart += ` AND ${table}.created_at >= ?`; // Specify the table name explicitly
+        countPart += ` AND ${table}.created_at >= ?`; // Specify the table name explicitly
         params.push(createdStartDate);
+        countParams.push(createdStartDate);
       }
 
       if (createdEndDate) {
         queryPart += ` AND ${table}.created_at <= ?`; // Specify the table name explicitly
+        countPart += ` AND ${table}.created_at <= ?`; // Specify the table name explicitly
         params.push(createdEndDate);
+        countParams.push(createdEndDate);
       }
 
       if (publishStartDate) {
         // Ensure 'scheduledPublishTime' is a valid column in the respective tables
         if (table === 'works' || table === 'news') {
-          queryPart += ` AND ${table}.scheduledPublishTime >= ?`; // Specify the table name explicitly
+          queryPart += ` AND ${table}.scheduledPublishTime >= ?`; // Specify the table name
+          countPart += ` AND ${table}.scheduledPublishTime >= ?`; // Specify the table name explicitly
           params.push(publishStartDate);
+          countParams.push(publishStartDate);
         }
       }
 
       if (publishEndDate) {
         if (table === 'works' || table === 'news') {
-          queryPart += ` AND ${table}.scheduledPublishTime <= ?`; // Specify the table name explicitly
+          queryPart += ` AND ${table}.scheduledPublishTime <= ?`; // Specify the table name
+          countPart += ` AND ${table}.scheduledPublishTime <= ?`; // Specify the table name explicitly
           params.push(publishEndDate);
+          countParams.push(publishEndDate);
         }
       }
 
       // Append the dynamic ORDER BY clause
-      const orderByClause = getOrderByClause(sort, table);
-      if (orderByClause) {
-        queryPart += ` ${orderByClause}`;
-      }
 
       queryPart += ')'; // Closing the subquery
+      countPart += ')'; // Closing the subquery
       sqlParts.push(queryPart);
-
-      console.log(`Query for table ${table}:`, queryPart);
+      countParts.push(countPart);
     });
 
-    const fullSql = sqlParts.join(' UNION ALL ') + ' LIMIT ? OFFSET ?';
-    params.push(limit, (page - 1) * limit);
+    // Execute the count queries to determine the total number of results
 
-    console.log('Executing SQL:', fullSql, params);
+    const totalCountQueries = countParts.join(' UNION ALL ');
+    const countResults = await pool.query(totalCountQueries, countParams);
 
-    const results = await pool.query(fullSql, params);
-    const totalResults = results.length;
+    // Sum up all counts returned by the UNION ALL query
+    const totalResults = countResults.reduce(
+      (acc, curr) => acc + Number(curr['COUNT(*)']),
+      0
+    );
+
+    // Calculate total pages
     const pages = Math.ceil(totalResults / limit);
 
-    res.json({ data: results, totalResults, pages });
+    // Adjust page number if out of bounds
+    const currentPage = Math.min(page, pages) || 1;
+    const offset = (currentPage - 1) * limit;
+
+    // Construct final SQL query for fetching data
+    const fullSql = `${sqlParts.join(
+      ' UNION ALL '
+    )} ORDER BY ${determineGlobalOrderBy(sort)} LIMIT ? OFFSET ?`;
+    const queryResults = await pool.query(fullSql, [...params, limit, offset]);
+
+    // Send response with data and pagination info
+    res.json({ data: queryResults, totalResults, pages });
   } catch (error) {
     console.error('Search error:', error.message);
     res.status(500).send('Error during search');
   }
 };
 
+const determineGlobalOrderBy = (sort) => {
+  switch (sort) {
+    case 'document_desc':
+      return 'created_at DESC';
+    case 'document_asc':
+      return 'created_at ASC';
+    case 'release_desc':
+      return 'scheduledPublishTime DESC';
+    case 'release_asc':
+      return 'scheduledPublishTime ASC';
+    default:
+      return 'created_at DESC'; // Default fallback when no specific sort is provided
+  }
+};
+
 // Define a function to determine the ORDER BY clause
-const getOrderByClause = (sort, table) => {
+/* const determineGlobalOrderBy = (sort, table) => {
   console.log(`Sorting for table: ${table} with sort parameter: ${sort}`);
 
-  // Explicitly define how each sort option translates to SQL for each table
-  const sortOptions = {
-    release_desc: {
-      news: 'scheduledPublishTime DESC',
-      works: 'works.scheduledPublishTime DESC',
-      soon: 'scheduledPublishTime DESC',
-      // Assuming 'persons' does not use publishTime, no entry is needed
-    },
-    release_asc: {
-      news: 'scheduledPublishTime ASC',
-      works: 'works.publishTime ASC',
-      soon: 'scheduledPublishTime ASC',
-    },
-    document_desc: {
-      news: 'created_at DESC',
-      works: 'works.created_at DESC',
-      persons: 'created_at DESC',
-      soon: 'created_at DESC',
-    },
-    document_asc: {
-      news: 'created_at ASC',
-      works: 'works.created_at ASC',
-      persons: 'created_at ASC',
-      soon: 'created_at ASC',
-    },
-  };
-
-  // Determine the correct SQL fragment based on the table and sort parameter
-  if (sortOptions[sort] && sortOptions[sort][table]) {
-    const orderByClause = sortOptions[sort][table];
-    console.log(`Generated ORDER BY clause: ${orderByClause}`);
-    return `ORDER BY ${orderByClause}`;
+  // Define how each sort option translates to SQL for each table
+  let orderByClause = '';
+  switch (sort) {
+    case 'document_desc':
+      if (table === 'works') {
+        orderByClause = 'works.created_at DESC'; // Specific to 'works'
+      } else {
+        orderByClause = 'created_at DESC'; // General case for other tables
+      }
+      break;
+    case 'document_asc':
+      if (table === 'works') {
+        orderByClause = 'works.created_at ASC'; // Specific to 'works'
+      } else {
+        orderByClause = 'created_at ASC'; // General case for other tables
+      }
+      break;
+    case 'release_desc':
+      // Apply only if the table has a 'scheduledPublishTime'
+      if (['news', 'soon'].includes(table)) {
+        orderByClause = `${table}.scheduledPublishTime DESC`;
+      }
+      break;
+    case 'release_asc':
+      if (['news', 'soon'].includes(table)) {
+        orderByClause = `${table}.scheduledPublishTime ASC`;
+      }
+      break;
   }
 
-  console.log(`No valid sort field found for ${table} with sort ${sort}`);
-  return ''; // Default to no specific ORDER BY clause if not valid or not applicable
-};
+  return orderByClause ? `ORDER BY ${orderByClause}` : ''; // Only return a clause if one is set
+}; */

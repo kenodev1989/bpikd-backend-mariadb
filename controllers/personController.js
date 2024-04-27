@@ -266,9 +266,11 @@ export const getPersonBasics = async (req, res) => {
 export async function deletePerson(req, res) {
   let conn;
   try {
-    const { personId } = req.params; // Assuming the person ID to delete is passed as a URL parameter (e.g., /persons/:personId)
+    const { personId } = req.params;
 
     conn = await pool.getConnection();
+
+    // Delete the person; dependent records will be deleted by the database
     const result = await conn.query('DELETE FROM persons WHERE id = ?', [
       personId,
     ]);
@@ -277,7 +279,6 @@ export async function deletePerson(req, res) {
       return res.status(404).json({ message: 'Person not found.' });
     }
 
-    // Person deleted successfully
     res.json({ message: 'Person deleted successfully.' });
   } catch (error) {
     console.error(error);
