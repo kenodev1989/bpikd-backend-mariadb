@@ -56,7 +56,7 @@ export const searchItems = async (req, res) => {
         });
       } */
 
-      if (searchTerm) {
+      if (searchTerm || searchTerm !== '') {
         let words = Array.isArray(searchTerm) ? searchTerm : [searchTerm];
         if (words.length > 0) {
           queryPart += ' AND ('; // Start the group of OR conditions
@@ -166,8 +166,8 @@ export const searchItems = async (req, res) => {
       if (externalSources) {
         queryPart += ` AND ${table}.externalSource IS NOT NULL AND ${table}.externalSource <> ""`;
         countPart += ` AND ${table}.externalSource IS NOT NULL AND ${table}.externalSource <> ""`;
-        params.push(externalSources);
-        countParams.push(externalSources);
+        /*   params.push(externalSources);
+        countParams.push(externalSources); */
       }
       // Date range filters
       if (createdStartDate) {
@@ -222,18 +222,25 @@ export const searchItems = async (req, res) => {
       0
     );
 
+    const parsPage = parseInt(page);
+    const parsLimit = parseInt(limit);
+
     // Calculate total pages
-    const pages = Math.ceil(totalResults / limit);
+    const pages = Math.ceil(totalResults / parsLimit);
 
     // Adjust page number if out of bounds
-    const currentPage = Math.min(page, pages) || 1;
-    const offset = (currentPage - 1) * limit;
+    const currentPage = Math.min(parsPage, pages) || 1;
+    const offset = (currentPage - 1) * parsLimit;
 
     // Construct final SQL query for fetching data
     const fullSql = `${sqlParts.join(
       ' UNION ALL '
     )} ORDER BY ${determineGlobalOrderBy(sort)} LIMIT ? OFFSET ?`;
-    const queryResults = await pool.query(fullSql, [...params, limit, offset]);
+    const queryResults = await pool.query(fullSql, [
+      ...params,
+      parsLimit,
+      offset,
+    ]);
 
     // Send response with data and pagination info
     res.json({ data: queryResults, totalResults, pages });
