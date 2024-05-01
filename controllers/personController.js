@@ -6,6 +6,9 @@ import fs from 'fs';
 import path from 'path';
 import util from 'util';
 import bodyParser from 'body-parser';
+import * as schedule from 'node-schedule';
+
+import moment from 'moment-timezone';
 
 const unlinkAsync = util.promisify(fs.unlink);
 const accessAsync = util.promisify(fs.access);
@@ -20,6 +23,33 @@ function serializeBigInt(key, value) {
   } else {
     return value; // return everything else unchanged
   }
+}
+
+/**
+ * Schedules a job to set isPublished to true at a specified UTC time.
+ * @param {string} workId - The ID of the work item to publish.
+ * @param {Date} scheduledTimeUTC - The UTC time when the work should be published.
+ * @param {Pool} dbPool - The database connection pool.
+ */
+async function schedulePublication(workId, scheduledTimeUTC, dbPool) {
+  schedule.scheduleJob(workId.toString(), scheduledTimeUTC, async function () {
+    const conn = await dbPool.getConnection();
+    console.log(
+      `Attempting to publish work ID: ${workId} at ${new Date().toISOString()}`
+    );
+    try {
+      await conn.query('UPDATE works SET isPublished = 1 WHERE id = ?', [
+        workId,
+      ]);
+      console.log(`Work with ID ${workId} has been published.`);
+    } catch (error) {
+      console.error('Failed to update publish status:', error);
+    } finally {
+      if (conn) {
+        conn.release();
+      }
+    }
+  });
 }
 
 export const addOrUpdatePersonAndWork = async (req, res) => {
@@ -85,6 +115,26 @@ export const addOrUpdatePersonAndWork = async (req, res) => {
       console.log('New person inserted with ID:', personId); // Log new person ID
     }
 
+    const scheduledTimeUTC = moment
+      .tz(scheduledPublishTime, 'Europe/Berlin')
+      .utc()
+      .toDate();
+
+    // Current time in UTC as a Date object
+    const currentTimeUTC = new Date();
+
+    console.log(`Scheduled Time UTC: ${scheduledTimeUTC}`);
+    console.log(`Current Time UTC: ${currentTimeUTC}`);
+
+    const validScheduledTime = scheduledTimeUTC > currentTimeUTC;
+    console.log(`Is the scheduled time in the future? ${validScheduledTime}`);
+    console.log(`Is valid future time? ${validScheduledTime}`);
+
+    // Check if the scheduled time is in the future
+    let publishStatus = isPublished;
+    if (publishTime === 'Scheduled' && validScheduledTime) {
+      publishStatus = false; // Set isPublished to false for future scheduled posts
+    }
     const workResult = await conn.query(
       'INSERT INTO works (person_id, title, content, publishTime, scheduledPublishTime, externalSource, visibility, isPublished, createdBy) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
@@ -92,29 +142,21 @@ export const addOrUpdatePersonAndWork = async (req, res) => {
         title,
         content,
         publishTime,
-        scheduledPublishTime || null,
+        validScheduledTime ? scheduledTimeUTC : null,
         externalSource || null,
         visibility,
-        isPublished,
+        publishStatus,
         'admin',
       ]
     );
-    const workId = workResult.insertId;
-    console.log('Work added with ID:', workId);
 
-    /*  ["images", "videos", "audios", "documents"].forEach((type) => {
-      if (req.files && req.files[type]) {
-        for (const file of req.files[type]) {
-          const filePath = `${req.protocol}://${req.get("host")}/uploads/${
-            file.filename
-          }`;
-          conn.query(
-            "INSERT INTO media (work_id, url, name, fileType) VALUES (?, ?, ?, ?)",
-            [workId, filePath, file.originalname, file.mimetype]
-          );
-        }
-      }
-    }); */
+    const workId = workResult.insertId;
+
+    if (!publishStatus && validScheduledTime) {
+      // Schedule a job to publish the work at the specified UTC time
+      schedulePublication(workId, scheduledTimeUTC, pool);
+    }
+    console.log('Work added with ID:', workId);
 
     let media = { images: [], videos: [], audios: [], documents: [] };
     ['images', 'videos', 'audios', 'documents'].forEach((type) => {
