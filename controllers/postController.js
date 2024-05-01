@@ -99,7 +99,7 @@ export const addNews = async (req, res) => {
         title,
         content,
         publishTime,
-        validScheduledTime ? scheduledTimeUTC : null,
+        scheduledTimeUTC ? scheduledTimeUTC : null,
         externalSource,
         visibility,
         publishStatus,
@@ -143,6 +143,7 @@ export const getAllNews = async (req, res) => {
       'SELECT * FROM news ORDER BY created_at DESC'
     );
     res.json(rows);
+    console.log(rows);
   } catch (error) {
     console.error('Error fetching news items:', error);
     res.status(500).json({ message: 'Internal Server Error' });
@@ -462,7 +463,7 @@ export const updateNewsById = async (req, res) => {
       featuredImage,
       publishTime,
       publishStatus,
-      validScheduledTime ? scheduledTimeUTC : null,
+      scheduledTimeUTC ? scheduledTimeUTC : null,
       externalSource,
       category,
       id,

@@ -142,7 +142,7 @@ export const addOrUpdatePersonAndWork = async (req, res) => {
         title,
         content,
         publishTime,
-        validScheduledTime ? scheduledTimeUTC : null,
+        scheduledTimeUTC ? scheduledTimeUTC : null,
         externalSource || null,
         visibility,
         publishStatus,
@@ -156,6 +156,7 @@ export const addOrUpdatePersonAndWork = async (req, res) => {
       // Schedule a job to publish the work at the specified UTC time
       schedulePublication(workId, scheduledTimeUTC, pool);
     }
+
     console.log('Work added with ID:', workId);
 
     let media = { images: [], videos: [], audios: [], documents: [] };
