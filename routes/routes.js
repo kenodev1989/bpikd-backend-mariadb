@@ -7,6 +7,7 @@ import sortRoutes from './sortRoutes.js';
 import postRoutes from './postRoutes.js';
 import partnersRoutes from './partnersRoutes.js';
 import searchRoutes from './searchRoutes.js';
+import visitorsRoute from './vistiorsRoute.js';
 
 /* const wordsRoutes = require("./words"); */
 
@@ -30,6 +31,8 @@ app.use('/post', postRoutes);
 app.use('/post/partners', partnersRoutes);
 
 app.use('/search', searchRoutes);
+
+app.use('/visitors', visitorsRoute);
 /* app.use("/words", wordsRoutes); */
 
 export default app;

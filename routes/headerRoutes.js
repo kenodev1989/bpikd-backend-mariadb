@@ -1,14 +1,14 @@
-import express from "express";
+import express from 'express';
 import {
   getHeaderConfig,
   updateHeaderConfig,
   upload,
-} from "../controllers/headerController.js";
+} from '../controllers/headerController.js';
 
 const router = express.Router();
 
-router.post("/updateHeader", upload.single("logoImg"), updateHeaderConfig);
+router.post('/updateHeader', upload.single('logoImg'), updateHeaderConfig);
 
-router.get("/getHeader", getHeaderConfig);
+router.get('/getHeader', getHeaderConfig);
 
 export default router;
