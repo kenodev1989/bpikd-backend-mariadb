@@ -79,11 +79,16 @@ export const addOrUpdatePersonAndWork = async (req, res) => {
         : null;
 
     // Improved debug statement to clarify what's retrieved
-    const [existing] = await conn.query(
+    /* const [existing] = await conn.query(
       "SELECT id FROM persons WHERE firstName = ? AND lastName = ?",
       [personData.firstName, personData.lastName]
     );
-    console.log("Existing person check:", existing);
+    console.log("Existing person check:", existing); */
+
+    const [existing] = await conn.query(
+      "SELECT id FROM persons WHERE id = ? AND firstName = ? AND lastName = ?",
+      [personData.id, personData.firstName, personData.lastName]
+    );
 
     let personId = existing ? existing.id : null;
     /* let personId = existing && existing.length > 0 ? existing.id : null; */
@@ -349,7 +354,8 @@ export const getPersonBasics = async (req, res) => {
                 id,
                 firstName,
                 lastName,
-                featured
+                featured,
+                aboutPerson
             FROM 
                 persons;
         `;

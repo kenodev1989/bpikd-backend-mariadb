@@ -1,5 +1,5 @@
-import mariadb from "mariadb";
-import dotenv from "dotenv";
+import mariadb from 'mariadb';
+import dotenv from 'dotenv';
 dotenv.config();
 
 const pool = mariadb.createPool({
@@ -17,6 +17,7 @@ const pool = mariadb.createPool({
   database: process.env.NODE_DB_NAME,
   connectionLimit: 20,
   acquireTimeout: 20000,
+  connectTimeout: 20000,
 });
 
 export default pool;

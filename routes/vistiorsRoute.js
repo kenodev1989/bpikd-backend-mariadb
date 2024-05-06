@@ -1,11 +1,11 @@
-import express from "express";
+import express from 'express';
 const router = express.Router();
-import useragent from "express-useragent";
-import pool from "../db/config.js";
+import useragent from 'express-useragent';
+import pool from '../db/config.js';
 
 // Get all visitors
 
-router.get("/", async (req, res) => {
+/* router.get("/", async (req, res) => {
   const ip = req.clientIp; // Make sure you have middleware to correctly fetch the IP
   const userAgent = req.headers["user-agent"]; // Directly getting user-agent
 
@@ -34,47 +34,102 @@ router.get("/", async (req, res) => {
       .json({ error: "Internal Server Error", details: error.message });
   }
 });
+ */
 
-router.get("/all", async (req, res) => {
+router.use(useragent.express());
+
+router.get('/', async (req, res) => {
+  const ip = req.clientIp;
+  const userAgent = req.headers['user-agent'];
+  const { browser, os, platform, isMobile, isTablet, isDesktop, device } =
+    req.useragent; // Add 'device' to the destructured object
+
+  console.log(req.useragent);
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    const query = `
+      INSERT INTO visitors (ip_address, system_info, browser_name, os, platform, is_mobile, is_tablet, is_desktop, device)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE count = count + 1, last_visit = CURRENT_TIMESTAMP`;
+
+    await conn.query(query, [
+      ip,
+      userAgent,
+      browser,
+      os,
+      platform,
+      isMobile,
+      isTablet,
+      isDesktop,
+      device, // Include the device name in the query parameters
+    ]);
+
+    // Fetch the last inserted visitor
+    const result = await conn.query(
+      'SELECT * FROM visitors WHERE ip_address = ? ORDER BY last_visit DESC LIMIT 1',
+      [ip]
+    );
+
+    // Serialize the result for response
+    const serializedResult = {
+      ...result[0],
+      count: result[0].count.toString(), // Assuming 'count' is BigInt
+      last_visit: result[0].last_visit.toString(), // Assuming 'last_visit' is also BigInt or a DateTime that needs formatting
+    };
+
+    res.json(serializedResult);
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ error: 'Internal Server Error', details: error.message });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+router.get('/all', async (req, res) => {
   let conn;
 
   try {
     conn = await pool.getConnection();
-    const query = "SELECT * FROM visitors ORDER BY last_visit DESC";
+    const query = 'SELECT * FROM visitors ORDER BY last_visit DESC';
     const results = await conn.query(query);
 
-    // Use a custom replacer to handle BigInt serialization
-    const jsonString = JSON.stringify(
-      results,
-      (key, value) => (typeof value === "bigint" ? value.toString() : value) // convert bigint to string
-    );
+    // Custom replacer function to handle BigInt serialization
+    const replacer = (key, value) =>
+      typeof value === 'bigint' ? value.toString() : value; // Convert BigInt to string
 
-    res.setHeader("Content-Type", "application/json");
+    // Serialize with the custom replacer
+    const jsonString = JSON.stringify(results, replacer);
+
+    res.setHeader('Content-Type', 'application/json');
     res.send(jsonString);
   } catch (error) {
     console.error(error);
     res
       .status(500)
-      .json({ error: "Internal Server Error", details: error.message });
+      .json({ error: 'Internal Server Error', details: error.message });
   } finally {
-    if (conn) conn.end(); // release the connection back to the pool
+    if (conn) conn.release(); // release the connection back to the pool
   }
 });
 
-router.get("/total", async (req, res) => {
+router.get('/total', async (req, res) => {
   let conn;
   try {
     conn = await pool.getConnection();
     const updateQuery =
-      "UPDATE visit_count SET total_visits = total_visits + 1 WHERE id = 1";
+      'UPDATE visit_count SET total_visits = total_visits + 1 WHERE id = 1';
     await conn.query(updateQuery);
 
-    const selectQuery = "SELECT total_visits FROM visit_count WHERE id = 1";
+    const selectQuery = 'SELECT total_visits FROM visit_count WHERE id = 1';
     const results = await conn.query(selectQuery);
 
     // Directly modify the result for serialization, if necessary
     results.forEach((result) => {
-      if (typeof result.total_visits === "bigint") {
+      if (typeof result.total_visits === 'bigint') {
         result.total_visits = result.total_visits.toString(); // Convert bigint to string
       }
     });
@@ -84,8 +139,8 @@ router.get("/total", async (req, res) => {
       totalVisits: results[0].total_visits,
     });
   } catch (error) {
-    console.error("Failed to increment visit count:", error);
-    res.status(500).send("Database error");
+    console.error('Failed to increment visit count:', error);
+    res.status(500).send('Database error');
   } finally {
     if (conn) conn.release(); // Ensure the connection is released back to the pool
   }
@@ -93,12 +148,12 @@ router.get("/total", async (req, res) => {
 
 // Route to handle new visits
 
-router.delete("/:id", async (req, res) => {
+router.delete('/:id', async (req, res) => {
   let conn;
   try {
     conn = await pool.getConnection();
     const { id } = req.params; // Get the ID from the request parameters
-    const deleteQuery = "DELETE FROM visitors WHERE id = ?";
+    const deleteQuery = 'DELETE FROM visitors WHERE id = ?';
     await conn.query(deleteQuery, [id]);
 
     res.json({
@@ -106,8 +161,8 @@ router.delete("/:id", async (req, res) => {
       message: `Visitor with ID ${id} deleted successfully.`,
     });
   } catch (error) {
-    console.error("Failed to delete visitor:", error);
-    res.status(500).send("Database error");
+    console.error('Failed to delete visitor:', error);
+    res.status(500).send('Database error');
   } finally {
     if (conn) conn.release(); // Ensure the connection is released back to the pool
   }

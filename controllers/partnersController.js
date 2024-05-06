@@ -1,4 +1,3 @@
-import express from "express";
 import pool from "../db/config";
 
 export const updateCreatePartners = async (req, res) => {
