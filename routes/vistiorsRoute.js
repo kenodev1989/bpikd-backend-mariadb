@@ -44,9 +44,7 @@ router.post('/', async (req, res) => {
   const userAgent = req.headers['user-agent'];
 
   // Check if device info is provided in the query parameters
-  const deviceInfo = req.body.deviceInfo; // Adjust this based on how you send device info from frontend
-
-  console.log(req.body.params);
+  const deviceInfo = req.body.params; // Adjust this based on how you send device info from frontend
 
   // Use ua-parser-js to parse the user-agent string
   const parser = new UAParser(userAgent);
@@ -56,8 +54,10 @@ router.post('/', async (req, res) => {
   const isMobile = result.device.type === 'mobile';
   const isTablet = result.device.type === 'tablet';
   const isDesktop = !isMobile && !isTablet;
-  const device = deviceInfo || result.device.model || 'Unknown'; // Use deviceInfo if provided, otherwise get device model from user-agent
+  const device = deviceInfo || 'Unknown'; // Use deviceInfo if provided, otherwise get device model from user-agent
   const platformType = result.platform ? result.platform.type : 'Unknown';
+
+  console.log(deviceInfo);
 
   let conn;
   try {
