@@ -2,6 +2,7 @@ import express from 'express';
 const router = express.Router();
 import useragent from 'express-useragent';
 import pool from '../db/config.js';
+import UAParser from 'ua-parser-js';
 
 // Get all visitors
 
@@ -41,10 +42,20 @@ router.use(useragent.express());
 router.get('/', async (req, res) => {
   const ip = req.clientIp;
   const userAgent = req.headers['user-agent'];
-  const { browser, os, platform, isMobile, isTablet, isDesktop, device } =
-    req.useragent; // Add 'device' to the destructured object
 
-  console.log(req.useragent);
+  // Use ua-parser-js to parse the user-agent string
+  const parser = new UAParser(userAgent);
+  const result = parser.getResult();
+
+  console.log(result);
+
+  const { browser, os, platform } = result;
+  const isMobile = result.device.type === 'mobile';
+  const isTablet = result.device.type === 'tablet';
+  const isDesktop = !isMobile && !isTablet;
+  const device = result.device.model || 'Unknown'; // Get device model or default to 'Unknown'
+  const platformType = result.platform ? result.platform.type : 'Unknown';
+
   let conn;
   try {
     conn = await pool.getConnection();
@@ -56,26 +67,25 @@ router.get('/', async (req, res) => {
     await conn.query(query, [
       ip,
       userAgent,
-      browser,
-      os,
-      platform,
+      browser.name,
+      os.name,
+      platformType,
       isMobile,
       isTablet,
       isDesktop,
-      device, // Include the device name in the query parameters
+      device,
     ]);
 
     // Fetch the last inserted visitor
-    const result = await conn.query(
-      'SELECT * FROM visitors WHERE ip_address = ? ORDER BY last_visit DESC LIMIT 1',
-      [ip]
-    );
+    const selectQuery =
+      'SELECT * FROM visitors WHERE ip_address = ? ORDER BY last_visit DESC LIMIT 1';
+    const [visitor] = await conn.query(selectQuery, [ip]);
 
     // Serialize the result for response
     const serializedResult = {
-      ...result[0],
-      count: result[0].count.toString(), // Assuming 'count' is BigInt
-      last_visit: result[0].last_visit.toString(), // Assuming 'last_visit' is also BigInt or a DateTime that needs formatting
+      ...visitor,
+      count: visitor.count.toString(),
+      last_visit: visitor.last_visit.toString(),
     };
 
     res.json(serializedResult);
