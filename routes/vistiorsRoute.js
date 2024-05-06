@@ -39,21 +39,24 @@ import UAParser from 'ua-parser-js';
 
 router.use(useragent.express());
 
-router.get('/', async (req, res) => {
+router.post('/', async (req, res) => {
   const ip = req.clientIp;
   const userAgent = req.headers['user-agent'];
+
+  // Check if device info is provided in the query parameters
+  const deviceInfo = req.body.deviceInfo; // Adjust this based on how you send device info from frontend
+
+  console.log(req.body.params);
 
   // Use ua-parser-js to parse the user-agent string
   const parser = new UAParser(userAgent);
   const result = parser.getResult();
 
-  console.log(result);
-
   const { browser, os, platform } = result;
   const isMobile = result.device.type === 'mobile';
   const isTablet = result.device.type === 'tablet';
   const isDesktop = !isMobile && !isTablet;
-  const device = result.device.model || 'Unknown'; // Get device model or default to 'Unknown'
+  const device = deviceInfo || result.device.model || 'Unknown'; // Use deviceInfo if provided, otherwise get device model from user-agent
   const platformType = result.platform ? result.platform.type : 'Unknown';
 
   let conn;
