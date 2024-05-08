@@ -1,14 +1,14 @@
-import express from "express";
-import multer from "multer";
-import pool from "../db/config.js";
-import { fileURLToPath } from "url";
-import fs from "fs";
-import path from "path";
-import util from "util";
-import bodyParser from "body-parser";
-import * as schedule from "node-schedule";
+import express from 'express';
+import multer from 'multer';
+import pool from '../db/config.js';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
+import path from 'path';
+import util from 'util';
+import bodyParser from 'body-parser';
+import * as schedule from 'node-schedule';
 
-import moment from "moment-timezone";
+import moment from 'moment-timezone';
 
 const unlinkAsync = util.promisify(fs.unlink);
 const accessAsync = util.promisify(fs.access);
@@ -18,7 +18,7 @@ app.use(bodyParser.urlencoded({ extended: true })); // o
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 function serializeBigInt(key, value) {
-  if (typeof value === "bigint") {
+  if (typeof value === 'bigint') {
     return value.toString(); // convert BigInt to string
   } else {
     return value; // return everything else unchanged
@@ -38,12 +38,12 @@ async function schedulePublication(workId, scheduledTimeUTC, dbPool) {
       `Attempting to publish work ID: ${workId} at ${new Date().toISOString()}`
     );
     try {
-      await conn.query("UPDATE works SET isPublished = 1 WHERE id = ?", [
+      await conn.query('UPDATE works SET isPublished = 1 WHERE id = ?', [
         workId,
       ]);
       console.log(`Work with ID ${workId} has been published.`);
     } catch (error) {
-      console.error("Failed to update publish status:", error);
+      console.error('Failed to update publish status:', error);
     } finally {
       if (conn) {
         conn.release();
@@ -73,7 +73,7 @@ export const addOrUpdatePersonAndWork = async (req, res) => {
 
     let featuredImage =
       req.files && req.files.featuredImage && req.files.featuredImage[0]
-        ? `${req.protocol}://${req.get("host")}/uploads/${
+        ? `${req.protocol}://${req.get('host')}/uploads/${
             req.files.featuredImage[0].filename
           }`
         : null;
@@ -86,42 +86,42 @@ export const addOrUpdatePersonAndWork = async (req, res) => {
     console.log("Existing person check:", existing); */
 
     const [existing] = await conn.query(
-      "SELECT id FROM persons WHERE id = ? AND firstName = ? AND lastName = ?",
+      'SELECT id FROM persons WHERE id = ? AND firstName = ? AND lastName = ?',
       [personData.id, personData.firstName, personData.lastName]
     );
 
     let personId = existing ? existing.id : null;
     /* let personId = existing && existing.length > 0 ? existing.id : null; */
-    console.log("Determined person ID:", existing); // Additional debug information
+    console.log('Determined person ID:', existing); // Additional debug information
 
     if (personId) {
-      console.log("Using existing person ID:", personId); // This should appear if a person is found
+      console.log('Using existing person ID:', personId); // This should appear if a person is found
       if (featuredImage) {
-        await conn.query("UPDATE persons SET featured = ? WHERE id = ?", [
+        await conn.query('UPDATE persons SET featured = ? WHERE id = ?', [
           featuredImage,
           personId,
         ]);
       }
     } else {
-      console.log("No existing person found, inserting new person"); // Confirm this logic branch
+      console.log('No existing person found, inserting new person'); // Confirm this logic branch
       const result = await conn.query(
-        "INSERT INTO persons (firstName, lastName, aboutPerson, featured, createdBy, category, visibility) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        'INSERT INTO persons (firstName, lastName, aboutPerson, featured, createdBy, category, visibility) VALUES (?, ?, ?, ?, ?, ?, ?)',
         [
           personData.firstName,
           personData.lastName,
           personData.aboutPerson,
           featuredImage,
-          "admin",
+          'admin',
           category,
           visibility,
         ]
       );
       personId = result.insertId;
-      console.log("New person inserted with ID:", personId); // Log new person ID
+      console.log('New person inserted with ID:', personId); // Log new person ID
     }
 
     const scheduledTimeUTC = moment
-      .tz(scheduledPublishTime, "Europe/Berlin")
+      .tz(scheduledPublishTime, 'Europe/Berlin')
       .utc()
       .toDate();
 
@@ -137,11 +137,11 @@ export const addOrUpdatePersonAndWork = async (req, res) => {
 
     // Check if the scheduled time is in the future
     let publishStatus = isPublished;
-    if (publishTime === "Scheduled" && validScheduledTime) {
+    if (publishTime === 'Scheduled' && validScheduledTime) {
       publishStatus = false; // Set isPublished to false for future scheduled posts
     }
     const workResult = await conn.query(
-      "INSERT INTO works (person_id, title, content, publishTime, scheduledPublishTime, externalSource, visibility, isPublished, createdBy) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      'INSERT INTO works (person_id, title, content, publishTime, scheduledPublishTime, externalSource, visibility, isPublished, createdBy) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         personId,
         title,
@@ -151,7 +151,7 @@ export const addOrUpdatePersonAndWork = async (req, res) => {
         externalSource || null,
         visibility,
         publishStatus,
-        "admin",
+        'admin',
       ]
     );
 
@@ -162,13 +162,13 @@ export const addOrUpdatePersonAndWork = async (req, res) => {
       schedulePublication(workId, scheduledTimeUTC, pool);
     }
 
-    console.log("Work added with ID:", workId);
+    console.log('Work added with ID:', workId);
 
     let media = { images: [], videos: [], audios: [], documents: [] };
-    ["images", "videos", "audios", "documents"].forEach((type) => {
+    ['images', 'videos', 'audios', 'documents'].forEach((type) => {
       if (req.files && req.files[type]) {
         req.files[type].forEach((file) => {
-          const filePath = `${req.protocol}://${req.get("host")}/uploads/${
+          const filePath = `${req.protocol}://${req.get('host')}/uploads/${
             file.filename
           }`;
           media[type].push({
@@ -179,7 +179,7 @@ export const addOrUpdatePersonAndWork = async (req, res) => {
           });
           // Insert each media file into the database
           conn.query(
-            "INSERT INTO media (work_id, url, name, fileType, type) VALUES (?, ?, ?, ?, ?)",
+            'INSERT INTO media (work_id, url, name, fileType, type) VALUES (?, ?, ?, ?, ?)',
             [workId, filePath, file.originalname, file.mimetype, type]
           );
         });
@@ -188,7 +188,7 @@ export const addOrUpdatePersonAndWork = async (req, res) => {
 
     await conn.commit();
     res.json({
-      message: "Person and work added/updated successfully",
+      message: 'Person and work added/updated successfully',
       personId: personId.toString(), // Handle BigInt correctly
       workId: workId.toString(),
     });
@@ -197,14 +197,14 @@ export const addOrUpdatePersonAndWork = async (req, res) => {
       await conn.rollback();
       conn.release();
     }
-    console.error("Failed to add/update person and work:", error);
+    console.error('Failed to add/update person and work:', error);
     res
       .status(500)
-      .json({ error: "Internal Server Error", details: error.message });
+      .json({ error: 'Internal Server Error', details: error.message });
   } finally {
     if (conn) {
       conn.release();
-      console.log("Connection released.");
+      console.log('Connection released.');
     }
   }
 };
@@ -273,7 +273,7 @@ export const searchPersonsByPartialName = async (req, res) => {
     ]);
 
     if (!results) {
-      res.status(404).json({ message: "No users found." });
+      res.status(404).json({ message: 'No users found.' });
       return;
     }
 
@@ -286,13 +286,13 @@ export const searchPersonsByPartialName = async (req, res) => {
       }));
       res.json(users);
     } else {
-      res.status(500).json({ message: "Error processing results." });
+      res.status(500).json({ message: 'Error processing results.' });
     }
   } catch (error) {
-    console.error("Search users by partial name error:", error);
+    console.error('Search users by partial name error:', error);
     res
       .status(500)
-      .json({ error: "Internal Server Error", details: error.message });
+      .json({ error: 'Internal Server Error', details: error.message });
   } finally {
     if (conn) {
       conn.release();
@@ -334,10 +334,10 @@ export const getAllPersonsWithData = async (req, res) => {
     const rows = await conn.query(query);
     res.json(rows);
   } catch (error) {
-    console.error("Failed to retrieve persons:", error);
+    console.error('Failed to retrieve persons:', error);
     res
       .status(500)
-      .json({ error: "Internal Server Error", details: error.message });
+      .json({ error: 'Internal Server Error', details: error.message });
   } finally {
     if (conn) {
       conn.release();
@@ -362,10 +362,10 @@ export const getPersonBasics = async (req, res) => {
     const rows = await conn.query(query);
     res.json(rows);
   } catch (error) {
-    console.error("Failed to retrieve person basics:", error);
+    console.error('Failed to retrieve person basics:', error);
     res
       .status(500)
-      .json({ error: "Internal Server Error", details: error.message });
+      .json({ error: 'Internal Server Error', details: error.message });
   } finally {
     if (conn) {
       conn.release();
@@ -381,20 +381,20 @@ export async function deletePerson(req, res) {
     conn = await pool.getConnection();
 
     // Delete the person; dependent records will be deleted by the database
-    const result = await conn.query("DELETE FROM persons WHERE id = ?", [
+    const result = await conn.query('DELETE FROM persons WHERE id = ?', [
       personId,
     ]);
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "Person not found." });
+      return res.status(404).json({ message: 'Person not found.' });
     }
 
-    res.json({ message: "Person deleted successfully." });
+    res.json({ message: 'Person deleted successfully.' });
   } catch (error) {
     console.error(error);
     res
       .status(500)
-      .json({ message: "An error occurred while deleting the person." });
+      .json({ message: 'An error occurred while deleting the person.' });
   } finally {
     if (conn) {
       conn.release();
@@ -404,7 +404,7 @@ export async function deletePerson(req, res) {
 
 export const deleteMultiplePersons = async (req, res) => {
   const { personIds } = req.body; // Expect an array of person IDs
-  console.log("Received person IDs for deletion:", personIds);
+  console.log('Received person IDs for deletion:', personIds);
 
   let conn;
   try {
@@ -412,12 +412,12 @@ export const deleteMultiplePersons = async (req, res) => {
     await conn.beginTransaction(); // Start transaction
 
     // Log the query for debugging
-    console.log("Deleting works for persons IDs:", personIds);
-    await conn.query("DELETE FROM works WHERE person_id IN (?)", [personIds]);
+    console.log('Deleting works for persons IDs:', personIds);
+    await conn.query('DELETE FROM works WHERE person_id IN (?)', [personIds]);
 
     // Log the query for debugging
-    console.log("Deleting persons with IDs:", personIds);
-    const result = await conn.query("DELETE FROM persons WHERE id IN (?)", [
+    console.log('Deleting persons with IDs:', personIds);
+    const result = await conn.query('DELETE FROM persons WHERE id IN (?)', [
       personIds,
     ]);
 
@@ -428,10 +428,10 @@ export const deleteMultiplePersons = async (req, res) => {
     });
   } catch (error) {
     await conn.rollback(); // Rollback on error
-    console.error("Failed to delete multiple persons:", error);
+    console.error('Failed to delete multiple persons:', error);
     res
       .status(500)
-      .json({ error: "Internal Server Error", details: error.message });
+      .json({ error: 'Internal Server Error', details: error.message });
   } finally {
     if (conn) {
       conn.release(); // Always release connection
@@ -504,11 +504,11 @@ export const getPersonWithWorksAndMedia = async (req, res) => {
 
     res.json(persons);
   } catch (error) {
-    console.error("Failed to retrieve person data:", error);
+    console.error('Failed to retrieve person data:', error);
     if (conn) conn.release();
     res
       .status(500)
-      .json({ error: "Internal Server Error", details: error.message });
+      .json({ error: 'Internal Server Error', details: error.message });
   }
 };
 
@@ -523,7 +523,7 @@ export const updatePersonBasicById = async (req, res) => {
     const { firstName, lastName, aboutPerson, featured } = data;
 
     let featuredImage = req.file
-      ? `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`
+      ? `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`
       : featured;
 
     console.log(featuredImage);
@@ -546,19 +546,19 @@ export const updatePersonBasicById = async (req, res) => {
     ]);
 
     if (result.affectedRows === 0) {
-      res.status(404).json({ error: "Person not found or no change made" });
+      res.status(404).json({ error: 'Person not found or no change made' });
     } else {
       res.json({
-        message: "Person updated successfully",
+        message: 'Person updated successfully',
         personId: personId,
         imageUrl: featuredImage,
       });
     }
   } catch (error) {
-    console.error("Failed to update person by ID:", error);
+    console.error('Failed to update person by ID:', error);
     res
       .status(500)
-      .json({ error: "Internal Server Error", details: error.message });
+      .json({ error: 'Internal Server Error', details: error.message });
   } finally {
     if (conn) {
       conn.release();
@@ -569,10 +569,10 @@ export const updatePersonBasicById = async (req, res) => {
 // Configure multer to use a file name based on personId
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, "./public/uploads/"); // Directory where files are saved
+    cb(null, './public/uploads/'); // Directory where files are saved
   },
   filename: function (req, file, cb) {
-    const extension = file.originalname.split(".").pop();
+    const extension = file.originalname.split('.').pop();
     const personId = req.params.personId; // Assuming personId is in the route parameters
     cb(null, `person-${personId}.${extension}`);
   },
@@ -603,13 +603,13 @@ export const getPersonBasicsById = async (req, res) => {
     if (rows.length) {
       res.json(rows[0]); // Send back the first row if found
     } else {
-      res.status(404).json({ error: "Person not found" });
+      res.status(404).json({ error: 'Person not found' });
     }
   } catch (error) {
-    console.error("Failed to retrieve person by ID:", error);
+    console.error('Failed to retrieve person by ID:', error);
     res
       .status(500)
-      .json({ error: "Internal Server Error", details: error.message });
+      .json({ error: 'Internal Server Error', details: error.message });
   } finally {
     if (conn) {
       conn.release();
@@ -637,7 +637,7 @@ export const getPersonWithWorksById = async (req, res) => {
     const rows = await conn.query(query, [personId]);
 
     if (!rows.length) {
-      return res.status(404).json({ error: "Person not found" });
+      return res.status(404).json({ error: 'Person not found' });
     }
 
     // Build the response object
@@ -662,10 +662,10 @@ export const getPersonWithWorksById = async (req, res) => {
 
     res.json(response);
   } catch (error) {
-    console.error("Failed to retrieve person with works:", error);
+    console.error('Failed to retrieve person with works:', error);
     res
       .status(500)
-      .json({ error: "Internal Server Error", details: error.message });
+      .json({ error: 'Internal Server Error', details: error.message });
   } finally {
     if (conn) {
       conn.release();
@@ -739,10 +739,10 @@ export const getPersonWithWorksAndMediaById = async (req, res) => {
 
     res.json(response);
   } catch (error) {
-    console.error("Failed to retrieve person with works and media:", error);
+    console.error('Failed to retrieve person with works and media:', error);
     res
       .status(500)
-      .json({ error: "Internal Server Error", details: error.message });
+      .json({ error: 'Internal Server Error', details: error.message });
   } finally {
     if (conn) conn.release();
   }
@@ -755,18 +755,18 @@ export const deleteWorkById = async (req, res) => {
   let conn;
   try {
     conn = await pool.getConnection();
-    const result = await conn.query("DELETE FROM works WHERE id = ?", [workId]);
+    const result = await conn.query('DELETE FROM works WHERE id = ?', [workId]);
 
     if (result.affectedRows > 0) {
-      res.json({ message: "Work deleted successfully" });
+      res.json({ message: 'Work deleted successfully' });
     } else {
-      res.status(404).json({ error: "Work not found" });
+      res.status(404).json({ error: 'Work not found' });
     }
   } catch (error) {
-    console.error("Failed to delete work by ID:", error);
+    console.error('Failed to delete work by ID:', error);
     res
       .status(500)
-      .json({ error: "Internal Server Error", details: error.message });
+      .json({ error: 'Internal Server Error', details: error.message });
   } finally {
     if (conn) {
       conn.release();
@@ -829,13 +829,13 @@ export const getWorkWithMediaById = async (req, res) => {
 
       res.json(workDetails); // Send the detailed work data back to the client
     } else {
-      res.status(404).json({ error: "Work not found" });
+      res.status(404).json({ error: 'Work not found' });
     }
   } catch (error) {
-    console.error("Failed to retrieve work by ID:", error);
+    console.error('Failed to retrieve work by ID:', error);
     res
       .status(500)
-      .json({ error: "Internal Server Error", details: error.message });
+      .json({ error: 'Internal Server Error', details: error.message });
   } finally {
     if (conn) {
       conn.release(); // Always release connection
@@ -894,14 +894,14 @@ export const getWorkWithMediaById = async (req, res) => {
 
 const mediaStorage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const fileType = file.mimetype.split("/")[0];
+    const fileType = file.mimetype.split('/')[0];
     const folderMap = {
-      image: "images",
-      video: "videos",
-      audio: "audios",
-      application: "documents", // You may need to tailor this more specifically
+      image: 'images',
+      video: 'videos',
+      audio: 'audios',
+      application: 'documents', // You may need to tailor this more specifically
     };
-    const folderName = folderMap[fileType] || "others";
+    const folderName = folderMap[fileType] || 'others';
     cb(null, path.join(__dirname, `../public/uploads/${folderName}`));
   },
   filename: function (req, file, cb) {
@@ -918,10 +918,10 @@ export const uploadMedia = multer({
     checkFileType(file, cb);
   },
 }).fields([
-  { name: "images", maxCount: 20 },
-  { name: "videos", maxCount: 20 },
-  { name: "audios", maxCount: 20 },
-  { name: "documents", maxCount: 20 },
+  { name: 'images', maxCount: 20 },
+  { name: 'videos', maxCount: 20 },
+  { name: 'audios', maxCount: 20 },
+  { name: 'documents', maxCount: 20 },
 ]);
 
 // Check file type
@@ -936,7 +936,7 @@ function checkFileType(file, cb) {
   if (mimetype && extname) {
     return cb(null, true);
   } else {
-    cb("Error: Files Only!");
+    cb('Error: Files Only!');
   }
 }
 
@@ -980,14 +980,14 @@ export const updateWorkById = async (req, res) => {
       workId,
     ]);
     if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "No work found with given ID" });
+      return res.status(404).json({ message: 'No work found with given ID' });
     }
-    res.json({ message: "Work updated successfully" });
+    res.json({ message: 'Work updated successfully' });
   } catch (error) {
-    console.error("Failed to update work:", error);
+    console.error('Failed to update work:', error);
     res
       .status(500)
-      .json({ error: "Internal Server Error", details: error.message });
+      .json({ error: 'Internal Server Error', details: error.message });
   } finally {
     if (conn) conn.release();
   }
@@ -1002,21 +1002,21 @@ export const deleteMediaById = async (req, res) => {
 
   try {
     conn = await pool.getConnection();
-    const result = await conn.query("SELECT url FROM media WHERE id = ?", [
+    const result = await conn.query('SELECT url FROM media WHERE id = ?', [
       mediaId,
     ]);
 
     // Check if any media was found
     if (result.length === 0) {
-      return res.status(404).json({ message: "Media not found" });
+      return res.status(404).json({ message: 'Media not found' });
     }
 
     const media = result[0]; // Assuming the result is an array of objects
     const filePath = path.join(
       __dirname,
-      "..",
-      "public",
-      media.url.substring(media.url.indexOf("/uploads"))
+      '..',
+      'public',
+      media.url.substring(media.url.indexOf('/uploads'))
     );
 
     // Proceed with file deletion
@@ -1024,20 +1024,20 @@ export const deleteMediaById = async (req, res) => {
       await fs.promises.unlink(filePath);
     } catch (fileError) {
       // Handle specific file system errors, e.g., file not found
-      if (fileError.code === "ENOENT") {
-        console.log("No such file to delete, but continuing with DB deletion");
+      if (fileError.code === 'ENOENT') {
+        console.log('No such file to delete, but continuing with DB deletion');
       } else {
         throw fileError; // Rethrow the error if it is not a 'file not found' error
       }
     }
 
-    await conn.query("DELETE FROM media WHERE id = ?", [mediaId]);
-    res.json({ message: "Media deleted successfully" });
+    await conn.query('DELETE FROM media WHERE id = ?', [mediaId]);
+    res.json({ message: 'Media deleted successfully' });
   } catch (error) {
-    console.error("Failed to delete media:", error);
+    console.error('Failed to delete media:', error);
     res
       .status(500)
-      .json({ error: "Internal Server Error", details: error.message });
+      .json({ error: 'Internal Server Error', details: error.message });
   } finally {
     if (conn) await conn.end();
   }
