@@ -927,7 +927,8 @@ export const uploadMedia = multer({
 // Check file type
 function checkFileType(file, cb) {
   // Allowed ext
-  const filetypes = /jpeg|jpg|png|gif|mp4|avi|mpeg|mp3|wav|pdf|doc|docx/;
+  const filetypes =
+    /jpeg|jpg|png|gif|mp4|avi|mpeg|mp3|wav|pdf|doc|docx|xls|xlsx|ppt|pptx|txt|html|css|js|zip|rar|7z|mov|MOV/;
   // Check ext
   const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
   // Check mime
