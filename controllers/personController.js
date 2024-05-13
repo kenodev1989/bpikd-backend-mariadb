@@ -520,13 +520,11 @@ export const updatePersonBasicById = async (req, res) => {
 
     const data = JSON.parse(req.body.data);
 
-    const { firstName, lastName, aboutPerson, featured } = data;
+    const { firstName, lastName, aboutPerson } = data;
 
     let featuredImage = req.file
       ? `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`
-      : featured;
-
-    console.log(featuredImage);
+      : null;
 
     const query = `
             UPDATE persons
