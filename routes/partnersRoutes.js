@@ -1,16 +1,16 @@
-import express from "express";
-import multer from "multer";
-import path from "path";
-import fs from "fs";
-import pool from "../db/config.js"; // Ensure your database configuration is correctly imported
+import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import pool from '../db/config.js'; // Ensure your database configuration is correctly imported
 
 const router = express.Router();
 
 const storage = multer.diskStorage({
-  destination: "./public/uploads/partners",
+  destination: './public/uploads/partners',
   filename: function (req, file, cb) {
     const match = file.fieldname.match(/partnersImages-(\d+)/);
-    const index = match ? match[1] : "default";
+    const index = match ? match[1] : 'default';
     const fileExtension = path.extname(file.originalname);
     const filename = `partnersImages-${index}${fileExtension}`;
     cb(null, filename);
@@ -28,44 +28,44 @@ const upload = multer({
     ) {
       cb(null, true);
     } else {
-      cb(new Error("Only images are allowed! (JPEG, JPG, PNG, GIF)"));
+      cb(new Error('Only images are allowed! (JPEG, JPG, PNG, GIF)'));
     }
   },
 }).fields([
-  { name: "partnersImages-0", maxCount: 1 },
-  { name: "partnersImages-1", maxCount: 1 },
-  { name: "partnersImages-2", maxCount: 1 },
-  { name: "partnersImages-3", maxCount: 1 },
-  { name: "partnersImages-4", maxCount: 1 },
-  { name: "partnersImages-5", maxCount: 1 },
-  { name: "partnersImages-6", maxCount: 1 },
-  { name: "partnersImages-7", maxCount: 1 },
-  { name: "partnersImages-8", maxCount: 1 },
-  { name: "partnersImages-9", maxCount: 1 },
-  { name: "partnersImages-10", maxCount: 1 },
-  { name: "partnersImages-11", maxCount: 1 },
-  { name: "partnersImages-12", maxCount: 1 },
-  { name: "partnersImages-13", maxCount: 1 },
-  { name: "partnersImages-14", maxCount: 1 },
-  { name: "partnersImages-15", maxCount: 1 },
-  { name: "partnersImages-16", maxCount: 1 },
-  { name: "partnersImages-17", maxCount: 1 },
-  { name: "partnersImages-18", maxCount: 1 },
-  { name: "partnersImages-19", maxCount: 1 },
-  { name: "partnersImages-20", maxCount: 1 },
+  { name: 'partnersImages-0', maxCount: 1 },
+  { name: 'partnersImages-1', maxCount: 1 },
+  { name: 'partnersImages-2', maxCount: 1 },
+  { name: 'partnersImages-3', maxCount: 1 },
+  { name: 'partnersImages-4', maxCount: 1 },
+  { name: 'partnersImages-5', maxCount: 1 },
+  { name: 'partnersImages-6', maxCount: 1 },
+  { name: 'partnersImages-7', maxCount: 1 },
+  { name: 'partnersImages-8', maxCount: 1 },
+  { name: 'partnersImages-9', maxCount: 1 },
+  { name: 'partnersImages-10', maxCount: 1 },
+  { name: 'partnersImages-11', maxCount: 1 },
+  { name: 'partnersImages-12', maxCount: 1 },
+  { name: 'partnersImages-13', maxCount: 1 },
+  { name: 'partnersImages-14', maxCount: 1 },
+  { name: 'partnersImages-15', maxCount: 1 },
+  { name: 'partnersImages-16', maxCount: 1 },
+  { name: 'partnersImages-17', maxCount: 1 },
+  { name: 'partnersImages-18', maxCount: 1 },
+  { name: 'partnersImages-19', maxCount: 1 },
+  { name: 'partnersImages-20', maxCount: 1 },
 ]);
 
-router.post("/", upload, async (req, res) => {
+router.post('/', upload, async (req, res) => {
   let conn;
   try {
     conn = await pool.getConnection();
 
-    conn.query("DELETE FROM partners", (error, results, fields) => {
+    /*  conn.query('DELETE FROM partners', (error, results, fields) => {
       if (error) throw error;
-      console.log("Deleted " + results.affectedRows + " rows");
+      console.log('Deleted ' + results.affectedRows + ' rows');
 
       // Reset AUTO_INCREMENT counter
-    });
+    }); */
 
     const files = req.files;
     let values = [];
@@ -74,7 +74,7 @@ router.post("/", upload, async (req, res) => {
     for (const field in files) {
       files[field].forEach((file) => {
         const filePath = `${req.protocol}://${req.get(
-          "host"
+          'host'
         )}/uploads/partners/${file.filename}`;
         activePaths.push(filePath);
         values.push(filePath, new Date());
@@ -82,12 +82,12 @@ router.post("/", upload, async (req, res) => {
     }
 
     if (values.length === 0) {
-      throw new Error("No files uploaded");
+      throw new Error('No files uploaded');
     }
 
     const placeholders = Array(values.length / 2)
-      .fill("(?, ?)")
-      .join(", ");
+      .fill('(?, ?)')
+      .join(', ');
     const query = `INSERT INTO partners (imagePath, createdAt) VALUES ${placeholders}
                        ON DUPLICATE KEY UPDATE imagePath=VALUES(imagePath), createdAt=VALUES(createdAt)`;
 
@@ -95,7 +95,7 @@ router.post("/", upload, async (req, res) => {
 
     // Delete unused entries
     const [existingEntries] = await conn.query(
-      "SELECT id, imagePath FROM partners"
+      'SELECT id, imagePath FROM partners'
     );
     console.log([existingEntries]);
     const existingPaths = existingEntries.map((entry) => entry.imagePath);
@@ -104,19 +104,19 @@ router.post("/", upload, async (req, res) => {
     );
 
     if (toDelete.length > 0) {
-      await conn.query("DELETE FROM partners WHERE imagePath IN (?)", [
+      await conn.query('DELETE FROM partners WHERE imagePath IN (?)', [
         toDelete,
       ]);
     }
 
     res.json({
-      message: "Files uploaded and database updated successfully",
+      message: 'Files uploaded and database updated successfully',
       updatedPaths: activePaths,
       deletedPaths: toDelete,
     });
   } catch (error) {
-    console.error("Error in operation:", error);
-    res.status(500).json({ message: "Server error", error: error.toString() });
+    console.error('Error in operation:', error);
+    res.status(500).json({ message: 'Server error', error: error.toString() });
   } finally {
     if (conn) conn.release();
   }
@@ -182,31 +182,31 @@ router.post("/", upload, async (req, res) => {
   }
 }); */
 
-router.get("/", async (req, res) => {
+router.get('/', async (req, res) => {
   let conn;
   try {
     // Establish a connection from the pool
     conn = await pool.getConnection();
-    const query = "SELECT * FROM partners";
+    const query = 'SELECT * FROM partners';
     const results = await conn.query(query);
 
-    console.log("Number of records fetched:", results.length);
-    console.log("Records:", results);
+    console.log('Number of records fetched:', results.length);
+    console.log('Records:', results);
 
     if (results.length === 0) {
       // Properly handle the case where no records are found
-      return res.status(404).json({ message: "No partners found" });
+      return res.status(404).json({ message: 'No partners found' });
     }
 
     // Return all the fetched records properly formatted as JSON
     res.json({
-      message: "Successfully retrieved partners data",
+      message: 'Successfully retrieved partners data',
       results,
     });
   } catch (error) {
     // Log and return any errors encountered during the operation
-    console.error("Error fetching partners data:", error);
-    res.status(500).json({ message: "Server error", error: error.toString() });
+    console.error('Error fetching partners data:', error);
+    res.status(500).json({ message: 'Server error', error: error.toString() });
   } finally {
     // Always release the connection back to the pool
     if (conn) {

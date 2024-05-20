@@ -2,20 +2,23 @@ import express from 'express';
 import multer from 'multer';
 import pool from '../db/config.js';
 import { fileURLToPath } from 'url';
+import util from 'util';
+
 import fs from 'fs';
 import path from 'path';
-import util from 'util';
+
 import bodyParser from 'body-parser';
 import * as schedule from 'node-schedule';
 
 import moment from 'moment-timezone';
+import { slugify } from '../utils/slugify.js';
 
-const unlinkAsync = util.promisify(fs.unlink);
-const accessAsync = util.promisify(fs.access);
 const app = express();
 app.use(bodyParser.urlencoded({ extended: true })); // o
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const unlinkAsync = util.promisify(fs.unlink);
 
 function serializeBigInt(key, value) {
   if (typeof value === 'bigint') {
@@ -68,22 +71,17 @@ export const addOrUpdatePersonAndWork = async (req, res) => {
       isPublished,
     } = data;
 
+    console.log(data);
+
     conn = await pool.getConnection();
     await conn.beginTransaction();
 
     let featuredImage =
       req.files && req.files.featuredImage && req.files.featuredImage[0]
-        ? `${req.protocol}://${req.get('host')}/uploads/${
+        ? `${req.protocol}://${req.get('host')}/featured/${
             req.files.featuredImage[0].filename
           }`
         : null;
-
-    // Improved debug statement to clarify what's retrieved
-    /* const [existing] = await conn.query(
-      "SELECT id FROM persons WHERE firstName = ? AND lastName = ?",
-      [personData.firstName, personData.lastName]
-    );
-    console.log("Existing person check:", existing); */
 
     const [existing] = await conn.query(
       'SELECT id FROM persons WHERE id = ? AND firstName = ? AND lastName = ?',
@@ -162,22 +160,20 @@ export const addOrUpdatePersonAndWork = async (req, res) => {
       schedulePublication(workId, scheduledTimeUTC, pool);
     }
 
-    console.log('Work added with ID:', workId);
-
     let media = { images: [], videos: [], audios: [], documents: [] };
+
     ['images', 'videos', 'audios', 'documents'].forEach((type) => {
       if (req.files && req.files[type]) {
         req.files[type].forEach((file) => {
-          const filePath = `${req.protocol}://${req.get('host')}/uploads/${
-            file.filename
-          }`;
+          const filePath = `${req.protocol}://${req.get('host')}/${slugify(
+            title
+          )}/${type}/${slugify(file.originalname)}`;
           media[type].push({
             url: filePath,
             name: file.originalname,
             fileType: file.mimetype,
             type,
           });
-          // Insert each media file into the database
           conn.query(
             'INSERT INTO media (work_id, url, name, fileType, type) VALUES (?, ?, ?, ?, ?)',
             [workId, filePath, file.originalname, file.mimetype, type]
@@ -193,6 +189,7 @@ export const addOrUpdatePersonAndWork = async (req, res) => {
       workId: workId.toString(),
     });
   } catch (error) {
+    console.log(error);
     if (conn) {
       await conn.rollback();
       conn.release();
@@ -208,49 +205,6 @@ export const addOrUpdatePersonAndWork = async (req, res) => {
     }
   }
 };
-
-/* export const searchPersonsByPartialName = async (req, res) => {
-  const { searchQuery } = req.query;
-
-  let conn;
-  try {
-    conn = await pool.getConnection();
-    const query = `
-      SELECT id, firstName, lastName, featured
-      FROM persons
-      WHERE firstName LIKE CONCAT('%', ?, '%') OR lastName LIKE CONCAT('%', ?, '%');
-    `;
-
-    const results = await conn.query(query, [searchQuery, searchQuery]);
-
-    if (!results) {
-      res.status(404).json({ message: 'No users found.' });
-      return;
-    }
-
-    // Ensure that results is an array before trying to map over it
-    if (Array.isArray(results)) {
-      const users = results.map((user) => ({
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        featured: user.featured,
-      }));
-      res.json(users);
-    } else {
-      res.status(500).json({ message: 'Error processing results.' });
-    }
-  } catch (error) {
-    console.error('Search users by partial name error:', error);
-    res
-      .status(500)
-      .json({ error: 'Internal Server Error', details: error.message });
-  } finally {
-    if (conn) {
-      conn.release();
-    }
-  }
-}; */
 
 export const searchPersonsByPartialName = async (req, res) => {
   const { searchQuery } = req.query;
@@ -373,35 +327,6 @@ export const getPersonBasics = async (req, res) => {
   }
 };
 
-export async function deletePerson(req, res) {
-  let conn;
-  try {
-    const { personId } = req.params;
-
-    conn = await pool.getConnection();
-
-    // Delete the person; dependent records will be deleted by the database
-    const result = await conn.query('DELETE FROM persons WHERE id = ?', [
-      personId,
-    ]);
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: 'Person not found.' });
-    }
-
-    res.json({ message: 'Person deleted successfully.' });
-  } catch (error) {
-    console.error(error);
-    res
-      .status(500)
-      .json({ message: 'An error occurred while deleting the person.' });
-  } finally {
-    if (conn) {
-      conn.release();
-    }
-  }
-}
-
 export const deleteMultiplePersons = async (req, res) => {
   const { personIds } = req.body; // Expect an array of person IDs
   console.log('Received person IDs for deletion:', personIds);
@@ -520,11 +445,13 @@ export const updatePersonBasicById = async (req, res) => {
 
     const data = JSON.parse(req.body.data);
 
-    const { firstName, lastName, aboutPerson } = data;
+    const { firstName, lastName, aboutPerson, featured } = data;
 
     let featuredImage = req.file
-      ? `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`
-      : null;
+      ? `${req.protocol}://${req.get('host')}/featured/${req.file.filename}`
+      : featured;
+
+    console.log(featuredImage);
 
     const query = `
             UPDATE persons
@@ -567,11 +494,12 @@ export const updatePersonBasicById = async (req, res) => {
 // Configure multer to use a file name based on personId
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, './public/uploads/'); // Directory where files are saved
+    cb(null, './public/featured/'); // Directory where files are saved
   },
   filename: function (req, file, cb) {
     const extension = file.originalname.split('.').pop();
-    const personId = req.params.personId; // Assuming personId is in the route parameters
+    const personId = req.params.personId;
+    // Assuming personId is in the route parameters
     cb(null, `person-${personId}.${extension}`);
   },
 });
@@ -841,77 +769,59 @@ export const getWorkWithMediaById = async (req, res) => {
   }
 };
 
-/* const mediaStorage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const type = file.mimetype.split('/')[0]; // 'image', 'audio', etc.
-    console.log(type);
-    let folderName = '';
-    switch (type) {
-      case 'image':
-        folderName = 'images';
-        break;
-      case 'audio':
-        folderName = 'audios';
-        break;
-      case 'video':
-        folderName = 'videos';
-        break;
-      case 'application':
-        folderName = 'documents'; // Example handling for document types
-        break;
-      default:
-        folderName = 'others'; // Handling any other file types
-        break;
-    }
-    cb(null, path.join(__dirname, `../public/uploads/${folderName}`));
-  },
-  filename: function (req, file, cb) {
-    const index = req.body.index; // Make sure 'index' is being sent correctly
-    const extension = path.extname(file.originalname);
-    cb(null, `${req.params.workId}-${file.fieldname}-${index}${extension}`);
-  },
-}); */
-
-/* const mediaStorage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const type = file.mimetype.split('/')[0]; // 'image', 'audio', etc.
-    let folderName = '';
-    if (type === 'image') folderName = 'images';
-    else if (type === 'audio') folderName = 'audios';
-    else if (type === 'video') folderName = 'videos';
-    else folderName = 'documents'; // This handles documents and other file types
-    cb(null, path.join(__dirname, `../public/uploads/${folderName}`));
-  },
-  filename: function (req, file, cb) {
-    const index = req.body.index; // Ensure index is passed as part of the form data
-    const extension = path.extname(file.originalname);
-    const workId = req.params.workId;
-    cb(null, `${workId}-${file.fieldname}-${index}${extension}`);
-  },
-}); */
-
 const mediaStorage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const fileType = file.mimetype.split('/')[0];
-    const folderMap = {
-      image: 'images',
-      video: 'videos',
-      audio: 'audios',
-      application: 'documents', // You may need to tailor this more specifically
-    };
-    const folderName = folderMap[fileType] || 'others';
-    cb(null, path.join(__dirname, `../public/uploads/${folderName}`));
+    let destPath;
+
+    const { title } = req.params;
+
+    const slugifyTitle = req.workTitle ? req.workTitle : slugify(title);
+
+    if (file.fieldname === 'featuredImage') {
+      // Special destination for featured images
+      destPath = path.join(__dirname, '../public', 'featured');
+    } else {
+      const fileType = file.mimetype.split('/')[0];
+      const folderMap = {
+        image: 'images',
+        video: 'videos',
+        audio: 'audios',
+        application: 'documents',
+      };
+      const folderName = folderMap[fileType] || 'others';
+      destPath = path.join(
+        __dirname,
+        '../public/works',
+        slugifyTitle,
+        folderName
+      );
+    }
+
+    fs.mkdir(destPath, { recursive: true }, (err) => {
+      if (err) {
+        return cb(err);
+      }
+      cb(null, destPath);
+    });
   },
   filename: function (req, file, cb) {
-    const workId = req.params.workId;
-    const extension = path.extname(file.originalname);
-    cb(null, `${workId}-${file.fieldname}-${Date.now()}${extension}`);
+    if (file.fieldname === 'featuredImage') {
+      // Different filename format for featured images
+      const extension = path.extname(file.originalname);
+
+      cb(null, `person-${file.originalname}`);
+      /* cb(null, `person-${file.originalname}`); */
+    } else {
+      // General case for other file types
+      const slugifiedName = slugify(file.originalname);
+      cb(null, `${slugifiedName}`);
+    }
   },
 });
 
 export const uploadMedia = multer({
   storage: mediaStorage,
-  limits: { fileSize: 10000000000000 }, // 1MB for example
+  limits: { fileSize: 10000000000000 },
   fileFilter: function (req, file, cb) {
     checkFileType(file, cb);
   },
@@ -920,13 +830,13 @@ export const uploadMedia = multer({
   { name: 'videos', maxCount: 20 },
   { name: 'audios', maxCount: 20 },
   { name: 'documents', maxCount: 20 },
+  { name: 'featuredImage', maxCount: 20 },
 ]);
 
 // Check file type
 function checkFileType(file, cb) {
   // Allowed ext
-  const filetypes =
-    /jpeg|jpg|png|gif|mp4|avi|mpeg|mp3|wav|pdf|doc|docx|xls|xlsx|ppt|pptx|txt|html|css|js|zip|rar|7z|mov|MOV/;
+  const filetypes = /jpeg|jpg|png|gif|mp4|avi|mpeg|mp3|wav|pdf|doc|mov|docx/;
   // Check ext
   const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
   // Check mime
@@ -951,8 +861,6 @@ export const updateWorkById = async (req, res) => {
     externalSource,
     category,
   } = req.body;
-
-  console.log(req.body);
 
   let conn;
   try {
@@ -993,8 +901,99 @@ export const updateWorkById = async (req, res) => {
 };
 
 // Import necessary modules
+async function removeEmptyDirectories(directory) {
+  try {
+    const files = await fs.promises.readdir(directory);
+    if (files.length === 0) {
+      await fs.promises.rmdir(directory);
+      console.log(`Removed empty directory: ${directory}`);
+      // Optionally, recurse to remove parent directories if also empty
+      await removeEmptyDirectories(path.dirname(directory));
+    }
+  } catch (err) {
+    console.error(`Error removing directory ${directory}:`, err);
+  }
+}
 
-// DELETE media by mediaId
+export async function deletePerson(req, res) {
+  const { personId } = req.params;
+  let conn;
+
+  try {
+    conn = await pool.getConnection();
+    await conn.beginTransaction();
+
+    // Get the URLs of all files associated with the person's works
+    const files = await conn.query(
+      `SELECT media.url FROM media JOIN works ON works.id = media.work_id WHERE works.person_id = ?;`,
+      [personId]
+    );
+
+    // Check if no files or person is found
+    if (files.length === 0) {
+      console.log('No files found for person, but continuing to delete person');
+    }
+
+    if (!Array.isArray(files) || files.length === 0) {
+      console.log('No files or unexpected data format:', files);
+      await conn.rollback();
+      return res
+        .status(404)
+        .json({ message: 'Media not found or bad data format' });
+    }
+
+    const deletePromises = files.map(async (file) => {
+      try {
+        // Resolve the file path from the URL
+        const filePath = path.resolve(
+          __dirname,
+          '../public/works',
+          new URL(file.url).pathname.substring(1)
+        );
+
+        // Attempt to delete the file
+        await unlinkAsync(filePath);
+
+        // Attempt to remove any empty directories after the file deletion
+        await removeEmptyDirectories(path.dirname(filePath));
+      } catch (err) {
+        console.error(`Error processing file URL ${file.url}:`, err);
+        return Promise.resolve(); // Resolve to avoid breaking Promise.all
+      }
+    });
+
+    await Promise.all(deletePromises);
+
+    // Delete the person; assuming cascade deletes are setup to handle works/media
+    const personDeleteResult = await conn.query(
+      'DELETE FROM persons WHERE id = ?',
+      [personId]
+    );
+    if (personDeleteResult.affectedRows === 0) {
+      await conn.rollback();
+      return res.status(404).json({ message: 'Person not found.' });
+    }
+
+    await conn.commit();
+    res.json({
+      message: 'Person deleted successfully along with associated files.',
+    });
+  } catch (error) {
+    console.error(
+      'An error occurred while deleting the person and files:',
+      error
+    );
+    await conn.rollback();
+    res.status(500).json({
+      message: 'An error occurred while deleting the person and files.',
+    });
+  } finally {
+    if (conn) {
+      conn.release();
+    }
+  }
+}
+
 export const deleteMediaById = async (req, res) => {
   const { mediaId } = req.params;
   let conn;
@@ -1011,16 +1010,21 @@ export const deleteMediaById = async (req, res) => {
     }
 
     const media = result[0]; // Assuming the result is an array of objects
-    const filePath = path.join(
+
+    // Assuming your server's public directory is set up to serve files from "public"
+    const urlPath = new URL(media.url).pathname; // Extracts the path from the URL
+
+    console.log(urlPath);
+    const localPath = path.join(
       __dirname,
-      '..',
-      'public',
-      media.url.substring(media.url.indexOf('/uploads'))
-    );
+      '../public/works',
+      urlPath.substring(1)
+    ); // Adjust as necessary to match your directory structure
 
     // Proceed with file deletion
     try {
-      await fs.promises.unlink(filePath);
+      await fs.promises.unlink(localPath);
+      await removeEmptyDirectories(path.dirname(localPath));
     } catch (fileError) {
       // Handle specific file system errors, e.g., file not found
       if (fileError.code === 'ENOENT') {

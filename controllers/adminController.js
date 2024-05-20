@@ -1,12 +1,12 @@
-import * as adminDAL from "../dal/adminDAL.js";
-import bcrypt from "bcryptjs";
-import { generateToken } from "../utils/generateToken.js";
+import * as adminDAL from '../dal/adminDAL.js';
+import bcrypt from 'bcryptjs';
+import { generateToken } from '../utils/generateToken.js';
 import {
   responseHandler,
   errorHandler,
-} from "../middleware/response-handler.js";
+} from '../middleware/response-handler.js';
 
-import { defaults, updateSchema } from "../validator/admin.js";
+import { defaults, updateSchema } from '../validator/admin.js';
 
 export async function register(req, res) {
   try {
@@ -47,7 +47,7 @@ export async function register(req, res) {
       return res.status(409).json({ error: error.message }); // 409 Conflict might be a suitable status code
     }
     // For other types of errors, you might want to use your generic error handler
-    errorHandler(res, 500, "An error occurred during registration.");
+    errorHandler(res, 500, 'An error occurred during registration.');
   }
 }
 
@@ -56,12 +56,12 @@ export async function login(req, res) {
     const { username, password } = req.body;
     const user = await adminDAL.getUserByUsername(username); // Ensure this DAL function is implemented properly
     if (!user) {
-      return errorHandler(res, 404, "User not found."); // Correctly pass status code before message
+      return errorHandler(res, 404, 'User not found.'); // Correctly pass status code before message
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return errorHandler(res, 401, "Password is incorrect."); // Correctly pass status code before message
+      return errorHandler(res, 401, 'Password is incorrect.'); // Correctly pass status code before message
     }
 
     const token = await generateToken(user); // Ensure this function is correctly implemented
@@ -76,31 +76,31 @@ export async function login(req, res) {
         },
         token,
       },
-      "Login successful.",
+      'Login successful.',
       200
     ); // Optionally only pass non-sensitive user info
   } catch (err) {
     console.log(err); // It's a good idea to log the actual error for debugging purposes
-    errorHandler(res, 500, "Login failed."); // Correctly pass status code before message
+    errorHandler(res, 500, 'Login failed.'); // Correctly pass status code before message
   }
 }
 
 export async function getAllUsers(req, res) {
   try {
     const users = await adminDAL.getAllUsers();
-    responseHandler(res, users, "Users fetched successfully.", 200);
+    responseHandler(res, users, 'Users fetched successfully.', 200);
   } catch (err) {
-    errorHandler(res, "Failed to fetch users.", 500);
+    errorHandler(res, 'Failed to fetch users.', 500);
   }
 }
 
 export async function handleDeleteUser(req, res) {
   try {
     await adminDAL.deleteUser(req.params.id);
-    res.json({ message: "User successfully deleted" });
+    res.json({ message: 'User successfully deleted' });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Error deleting user" });
+    res.status(500).json({ message: 'Error deleting user' });
   }
 }
 
@@ -115,7 +115,7 @@ export async function handleDeleteMultipleUsers(req, res) {
     console.error(err);
     res
       .status(500)
-      .json({ message: "An error occurred while deleting users." });
+      .json({ message: 'An error occurred while deleting users.' });
   }
 }
 
@@ -123,7 +123,7 @@ export async function getUser(req, res) {
   let conn;
   try {
     conn = await pool.getConnection();
-    const results = await conn.query("SELECT * FROM users WHERE id = ?;", [
+    const results = await conn.query('SELECT * FROM users WHERE id = ?;', [
       req.user.id,
     ]);
     const user = results[0]; // Get the first result
@@ -131,7 +131,7 @@ export async function getUser(req, res) {
     if (user) {
       responseHandler(user, res);
     } else {
-      errorHandler(404, res, "No user!");
+      errorHandler(404, res, 'No user!');
     }
   } catch (err) {
     console.error(err);
@@ -174,7 +174,7 @@ export async function getUserById(id) {
     delete user.password; // Remove sensitive data if not needed for the response
     return user;
   } catch (error) {
-    console.error("Error fetching user by ID in Controller:", error);
+    console.error('Error fetching user by ID in Controller:', error);
     throw error; // Handle errors or rethrow them after logging
   }
 }
@@ -187,22 +187,22 @@ export async function updateUser(req, res) {
       return errorHandler(res, 403, error.message);
     }
 
-    const isAdmin = req.user.role === "admin";
-    const targetUserId = isAdmin && req.params.id ? req.params.id : req.user.id;
+    /*  const isAdmin = req.user.role === 'admin' && req.user.role === 'owner'; */
+    const targetUserId = req.params.id;
 
     // Update user in the database
     const updateSuccess = await adminDAL.updateUserInDB(targetUserId, value);
     if (!updateSuccess) {
-      throw new Error("Failed to update user");
+      throw new Error('Failed to update user');
     }
 
     // Optionally retrieve and send updated user data
     const updatedUser = await adminDAL.getUserByIdFromDB(targetUserId);
     delete updatedUser.password; // Remove password for security reasons
-    responseHandler(res, updatedUser, "User updated successfully");
+    responseHandler(res, updatedUser, 'User updated successfully');
   } catch (err) {
-    console.error("Error in updateUser Controller:", err);
-    errorHandler(res, 500, err.message || "Failed to update user.");
+    console.error('Error in updateUser Controller:', err);
+    errorHandler(res, 500, err.message || 'Failed to update user.');
   }
 }
 
@@ -213,14 +213,14 @@ export const getUserByIdController = async (req, res) => {
 
     if (!user) {
       // If no user is found with the given ID, return a 404 error
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: 'User not found' });
     }
 
     // Return the user data if found
     res.json(user);
   } catch (err) {
-    console.error("Error fetching user by ID:", err);
+    console.error('Error fetching user by ID:', err);
     // Handle potential errors, such as database errors
-    res.status(500).json({ message: "Error fetching user details" });
+    res.status(500).json({ message: 'Error fetching user details' });
   }
 };

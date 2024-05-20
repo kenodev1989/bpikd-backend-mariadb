@@ -129,7 +129,7 @@ router.get('/all', async (req, res) => {
   }
 });
 
-router.get('/total', async (req, res) => {
+/* router.get('/total', async (req, res) => {
   let conn;
   try {
     conn = await pool.getConnection();
@@ -157,7 +157,7 @@ router.get('/total', async (req, res) => {
   } finally {
     if (conn) conn.release(); // Ensure the connection is released back to the pool
   }
-});
+}); */
 
 // Route to handle new visits
 

@@ -1,17 +1,17 @@
-import { generateToken } from "../utils/generateToken.js";
-import model from "../models/admin.js";
-import * as validator from "../validator/admin.js";
+import { generateToken } from '../utils/generateToken.js';
+import model from '../models/admin.js';
+import * as validator from '../validator/admin.js';
 import {
   errorHandler,
   responseHandler,
-} from "../middleware/response-handler.js";
+} from '../middleware/response-handler.js';
 import {
   findOne,
   create,
   findOneAndUpdate,
   findOneAndDelete,
-} from "../dal/dal.js";
-import bcrypt from "bcryptjs";
+} from '../dal/dal.js';
+import bcrypt from 'bcryptjs';
 
 export async function register(req, res) {
   console.log(req, res);
@@ -38,7 +38,7 @@ export async function register(req, res) {
       token: accessToken,
     };
 
-    responseHandler(data, res, "Admin Registered Successfully!", 201);
+    responseHandler(data, res, 'Admin Registered Successfully!', 201);
   } catch (err) {
     console.log(err);
     errorHandler(500, res, err.message);
@@ -61,7 +61,7 @@ export async function login(req, res) {
       { password: 1, username: 1, email: 1 }
     );
     if (!user) {
-      return errorHandler(404, res, "User Not Found!");
+      return errorHandler(404, res, 'User Not Found!');
     }
     const allGood = await bcrypt.compare(value.password, user.password);
 
@@ -69,7 +69,7 @@ export async function login(req, res) {
       const accessToken = await generateToken(user);
       responseHandler({ user: user, token: accessToken }, res);
     } else {
-      errorHandler(401, res, "Alert! Wrong Credentials.");
+      errorHandler(401, res, 'Alert! Wrong Credentials.');
     }
   } catch (err) {
     console.log(err);
@@ -80,7 +80,7 @@ export async function login(req, res) {
 export async function getUser(req, res) {
   try {
     const user = await findOne(model, { _id: req.user._id });
-    user ? responseHandler(user, res) : errorHandler(404, res, "No user!");
+    user ? responseHandler(user, res) : errorHandler(404, res, 'No user!');
   } catch (err) {
     console.log(err);
     errorHandler(500, res, err.message);
@@ -98,7 +98,7 @@ export async function updateUser(req, res) {
     }
 
     const user = await findOneAndUpdate(model, { _id: req.user._id }, value);
-    user ? responseHandler(user, res) : errorHandler(404, res, "No user!");
+    user ? responseHandler(user, res) : errorHandler(404, res, 'No user!');
   } catch (err) {
     console.log(err);
     errorHandler(500, res, err.message);
@@ -134,25 +134,25 @@ export async function getAllUsers(req, res) {
     // Query to fetch users with "user" or "editor" roles
     const users = await model
       .find({
-        role: { $in: ["user", "editor"] },
+        role: { $in: ['user', 'editor'] },
       })
-      .select("-password"); // Exclude passwords from the response for security
+      .select('-password'); // Exclude passwords from the response for security
 
     if (users && users.length > 0) {
-      responseHandler(users, res, "Users fetched successfully", 200);
+      responseHandler(users, res, 'Users fetched successfully', 200);
     } else {
-      errorHandler(404, res, "No users found");
+      errorHandler(404, res, 'No users found');
     }
   } catch (err) {
     console.log(err);
-    errorHandler(500, res, "An error occurred while fetching users");
+    errorHandler(500, res, 'An error occurred while fetching users');
   }
 }
 
 export async function deleteUser(req, res) {
   try {
     const user = await findOneAndDelete(model, { _id: req.user._id });
-    user ? responseHandler(user, res) : errorHandler(404, res, "No user!");
+    user ? responseHandler(user, res) : errorHandler(404, res, 'No user!');
   } catch (err) {
     console.log(err);
     errorHandler(500, res, err.message);

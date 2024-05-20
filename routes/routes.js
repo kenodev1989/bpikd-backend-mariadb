@@ -8,6 +8,8 @@ import postRoutes from './postRoutes.js';
 import partnersRoutes from './partnersRoutes.js';
 import searchRoutes from './searchRoutes.js';
 import visitorsRoute from './vistiorsRoute.js';
+import textSettingRoutes from './textSettingRoutes.js';
+import themeRoutes from './themeRoutes.js';
 
 /* const wordsRoutes = require("./words"); */
 
@@ -19,10 +21,14 @@ app.use('/', userRoutes);
 app.use('/sort', sortRoutes);
 
 // Serve static files from the public/uploads directory
-app.use('/uploads', express.static('public/uploads'));
+app.use('/', express.static('public/works'));
+app.use('/', express.static('public'));
+
+app.use('/settings', textSettingRoutes);
 
 app.use('/footer', footerRoutes);
 
+app.use('/theme', themeRoutes);
 app.use('/header', headerRoutes);
 
 app.use('/post/persons', personsRoutes);
