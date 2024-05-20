@@ -17,6 +17,11 @@ const storage = multer.diskStorage({
   },
 });
 
+const fields = [];
+for (let i = 0; i < 21; i++) {
+  fields.push({ name: `partnersImages-${i}`, maxCount: 1 });
+}
+
 const upload = multer({
   storage: storage,
   limits: { fileSize: 10 * 1024 * 1024 },
@@ -31,156 +36,67 @@ const upload = multer({
       cb(new Error('Only images are allowed! (JPEG, JPG, PNG, GIF)'));
     }
   },
-}).fields([
-  { name: 'partnersImages-0', maxCount: 1 },
-  { name: 'partnersImages-1', maxCount: 1 },
-  { name: 'partnersImages-2', maxCount: 1 },
-  { name: 'partnersImages-3', maxCount: 1 },
-  { name: 'partnersImages-4', maxCount: 1 },
-  { name: 'partnersImages-5', maxCount: 1 },
-  { name: 'partnersImages-6', maxCount: 1 },
-  { name: 'partnersImages-7', maxCount: 1 },
-  { name: 'partnersImages-8', maxCount: 1 },
-  { name: 'partnersImages-9', maxCount: 1 },
-  { name: 'partnersImages-10', maxCount: 1 },
-  { name: 'partnersImages-11', maxCount: 1 },
-  { name: 'partnersImages-12', maxCount: 1 },
-  { name: 'partnersImages-13', maxCount: 1 },
-  { name: 'partnersImages-14', maxCount: 1 },
-  { name: 'partnersImages-15', maxCount: 1 },
-  { name: 'partnersImages-16', maxCount: 1 },
-  { name: 'partnersImages-17', maxCount: 1 },
-  { name: 'partnersImages-18', maxCount: 1 },
-  { name: 'partnersImages-19', maxCount: 1 },
-  { name: 'partnersImages-20', maxCount: 1 },
-]);
+}).fields(fields);
 
 router.post('/', upload, async (req, res) => {
   let conn;
   try {
     conn = await pool.getConnection();
+    const partnersData = JSON.parse(req.body.partnersData || '[]'); // Parse the JSON input safely
 
-    /*  conn.query('DELETE FROM partners', (error, results, fields) => {
-      if (error) throw error;
-      console.log('Deleted ' + results.affectedRows + ' rows');
+    const results = await Promise.all(
+      partnersData.map(async (partnerData, index) => {
+        const file = req.files[`partnersImages-${index}`]
+          ? req.files[`partnersImages-${index}`][0]
+          : null;
+        let filePath = partnerData.imagePath;
 
-      // Reset AUTO_INCREMENT counter
-    }); */
+        if (file) {
+          // If a new file is uploaded, update the file path
+          filePath = `${req.protocol}://${req.get('host')}/uploads/partners/${
+            file.filename
+          }`;
+        } else if (partnerData.id) {
+          // If no new file and id exists, attempt to reuse the existing file path
+          const [existing] = await conn.query(
+            'SELECT imagePath FROM partners WHERE id = ?',
+            [partnerData.id]
+          );
+          if (existing.length > 0) {
+            filePath = existing[0].imagePath;
+          }
+        }
 
-    const files = req.files;
-    let values = [];
-    let activePaths = [];
-
-    for (const field in files) {
-      files[field].forEach((file) => {
-        const filePath = `${req.protocol}://${req.get(
-          'host'
-        )}/uploads/partners/${file.filename}`;
-        activePaths.push(filePath);
-        values.push(filePath, new Date());
-      });
-    }
-
-    if (values.length === 0) {
-      throw new Error('No files uploaded');
-    }
-
-    const placeholders = Array(values.length / 2)
-      .fill('(?, ?)')
-      .join(', ');
-    const query = `INSERT INTO partners (imagePath, createdAt) VALUES ${placeholders}
-                       ON DUPLICATE KEY UPDATE imagePath=VALUES(imagePath), createdAt=VALUES(createdAt)`;
-
-    await conn.query(query, values);
-
-    // Delete unused entries
-    const [existingEntries] = await conn.query(
-      'SELECT id, imagePath FROM partners'
+        if (partnerData.id) {
+          // Update existing company info
+          await conn.query(
+            'UPDATE partners SET imagePath = ?, createdAt = NOW() WHERE id = ?',
+            [filePath, partnerData.id]
+          );
+        } else {
+          const result = await conn.query(
+            'INSERT INTO partners (imagePath, createdAt) VALUES (?, NOW())',
+            [filePath]
+          );
+          partnerData.id = result.insertId.toString(); // Update partnerData with new ID
+        }
+        return { ...partnerData, imagePath: filePath }; // Return the updated company info
+      })
     );
-    console.log([existingEntries]);
-    const existingPaths = existingEntries.map((entry) => entry.imagePath);
-    const toDelete = existingPaths.filter(
-      (path) => !activePaths.includes(path)
-    );
-
-    if (toDelete.length > 0) {
-      await conn.query('DELETE FROM partners WHERE imagePath IN (?)', [
-        toDelete,
-      ]);
-    }
 
     res.json({
-      message: 'Files uploaded and database updated successfully',
-      updatedPaths: activePaths,
-      deletedPaths: toDelete,
+      message: 'Partners updated successfully',
+      data: results,
     });
   } catch (error) {
-    console.error('Error in operation:', error);
-    res.status(500).json({ message: 'Server error', error: error.toString() });
+    console.error('Error updating partners:', error);
+    res.status(500).send('Server error: ' + error.message);
   } finally {
-    if (conn) conn.release();
+    if (conn) {
+      conn.release(); // Always release connection
+    }
   }
 });
-
-/* router.post("/", upload, async (req, res) => {
-  let conn;
-  try {
-    conn = await pool.getConnection();
-    await conn.beginTransaction(); // Start a transaction
-
-    const images = JSON.parse(req.body.images); // Assuming the metadata is sent under the 'images' field as a JSON string
-    let fileData = {};
-
-    // Process files first, storing paths in a map
-    if (req.files) {
-      req.files.forEach((file, index) => {
-        fileData[index] = `${req.protocol}://${req.get(
-          "host"
-        )}/uploads/partners/${file.filename}`;
-      });
-    }
-
-    let activeIds = [];
-
-    // Process each image metadata entry
-    images.forEach((image, index) => {
-      const filePath = fileData[index] || image.imagePath; // Use uploaded file path if available
-
-      if (image.id) {
-        // Existing image, update it
-        conn.query(
-          "UPDATE partners SET imagePath = ?, updatedAt = NOW() WHERE id = ?",
-          [filePath, image.id]
-        );
-        activeIds.push(image.id);
-      } else {
-        // New image, insert it
-        const results = conn.query(
-          "INSERT INTO partners (imagePath, createdAt) VALUES (?, NOW())",
-          [filePath]
-        );
-        activeIds.push(results.insertId); // Assuming 'results.insertId' is supported by your SQL driver
-      }
-    });
-
-    // Remove any entries that are not in the active list
-    if (activeIds.length > 0) {
-      conn.query("DELETE FROM partners WHERE id NOT IN (?)", [activeIds]);
-    }
-
-    await conn.commit(); // Commit the transaction
-    res.json({
-      message: "Images processed successfully",
-      activeIds: activeIds,
-    });
-  } catch (error) {
-    await conn.rollback(); // Rollback the transaction on errors
-    console.error("Error during image processing:", error);
-    res.status(500).json({ message: "Server error", error: error.toString() });
-  } finally {
-    if (conn) conn.release(); // Always release the connection
-  }
-}); */
 
 router.get('/', async (req, res) => {
   let conn;
@@ -190,13 +106,11 @@ router.get('/', async (req, res) => {
     const query = 'SELECT * FROM partners';
     const results = await conn.query(query);
 
-    console.log('Number of records fetched:', results.length);
-    console.log('Records:', results);
-
     if (results.length === 0) {
       // Properly handle the case where no records are found
       return res.status(404).json({ message: 'No partners found' });
     }
+    console.log(results);
 
     // Return all the fetched records properly formatted as JSON
     res.json({
@@ -211,6 +125,28 @@ router.get('/', async (req, res) => {
     // Always release the connection back to the pool
     if (conn) {
       conn.release();
+    }
+  }
+});
+
+// DELETE route to delete a partner by ID
+router.delete('/:id', async (req, res) => {
+  const { id } = req.params;
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    const result = await conn.query('DELETE FROM partners WHERE id = ?', [id]);
+    if (result.affectedRows) {
+      res.json({ message: 'Partner deleted successfully' });
+    } else {
+      res.status(404).send('Partner not found');
+    }
+  } catch (error) {
+    console.error('Error deleting partner:', error);
+    res.status(500).send('Server error');
+  } finally {
+    if (conn) {
+      conn.release(); // Always release connection
     }
   }
 });
