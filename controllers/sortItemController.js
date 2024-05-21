@@ -1,7 +1,7 @@
-import pool from "../db/config.js"; // Assumes you have a dbConnection module for pooling
+import pool from '../db/config.js'; // Assumes you have a dbConnection module for pooling
 
 function replacer(key, value) {
-  if (typeof value === "bigint") {
+  if (typeof value === 'bigint') {
     return value.toString(); // Convert BigInt to string
   }
   return value;
@@ -11,7 +11,7 @@ export const updateOrCreateSortItems = async (req, res) => {
   const { firstRowItems, secondRowItems, userId } = req.body;
 
   if (!firstRowItems || !secondRowItems || !userId) {
-    return res.status(400).json({ error: "Missing required fields" });
+    return res.status(400).json({ error: 'Missing required fields' });
   }
 
   let connection;
@@ -22,7 +22,7 @@ export const updateOrCreateSortItems = async (req, res) => {
 
     // Insert or update logic for firstRowItem
     let [existingSortItem] = await connection.query(
-      "SELECT id FROM sort_items WHERE userId = ? AND firstRowItem = ?",
+      'SELECT id FROM sort_items WHERE userId = ? AND firstRowItem = ?',
       [userId, firstRowItems.id]
     );
 
@@ -30,44 +30,54 @@ export const updateOrCreateSortItems = async (req, res) => {
 
     if (existingSortItem) {
       sortItemId = existingSortItem.id;
-      console.log("Using existing sort item ID:", sortItemId);
+      console.log('Using existing sort item ID:', sortItemId);
     } else {
       let result = await connection.query(
-        "INSERT INTO sort_items (userId, firstRowItem) VALUES (?, ?)",
+        'INSERT INTO sort_items (userId, firstRowItem) VALUES (?, ?)',
         [userId, firstRowItems.id]
       );
       sortItemId = result.insertId;
-      console.log("New sort item created with ID:", sortItemId);
+      console.log('New sort item created with ID:', sortItemId);
     }
 
     // Handling secondRowItems
     await connection.query(
-      "DELETE FROM second_row_items WHERE sortItem_id = ?",
+      'DELETE FROM second_row_items WHERE sortItem_id = ?',
       [sortItemId]
     );
 
     for (const item of secondRowItems) {
       await connection.query(
-        "INSERT INTO second_row_items (sortItem_id, personId) VALUES (?, ?)",
+        'INSERT INTO second_row_items (sortItem_id, personId) VALUES (?, ?)',
         [sortItemId, item.id]
       );
     }
 
     await connection.commit();
-    res.json({ message: "Sort items updated successfully", id: sortItemId });
+    res.json({ message: 'Sort items updated successfully', id: sortItemId });
   } catch (error) {
     await connection.rollback();
-    console.error("Error processing your request:", error);
+    console.error('Error processing your request:', error);
     res
       .status(500)
-      .json({ error: "Internal Server Error", details: error.message });
+      .json({ error: 'Internal Server Error', details: error.message });
   } finally {
     if (connection) connection.release();
   }
 };
 
-export const updateSortedItems = async (req, res) => {
-  const { firstRowItems, secondRowItems, userId } = req.body;
+/* export const updateSortedItems = async (req, res) => {
+  const { firstRowItems, secondRowItems } = req.body;
+
+  const userId = 1;
+
+  // Check if firstRowItems is undefined, null, or an empty object
+  if (!firstRowItems || Object.keys(firstRowItems).length === 0) {
+    return res
+      .status(400)
+      .json({ error: 'firstRowItems is required and cannot be empty.' });
+  }
+
   let conn;
 
   try {
@@ -77,20 +87,20 @@ export const updateSortedItems = async (req, res) => {
     // Handling firstRowItem
     // Check if an entry exists for this user
     let [existing] = await conn.query(
-      "SELECT id FROM sort_items WHERE userId = ?",
+      'SELECT id FROM sort_items WHERE userId = ?',
       [userId]
     );
 
     if (existing) {
       // Update existing firstRowItem
       await conn.query(
-        "UPDATE sort_items SET firstRowItem = ? WHERE userId = ?",
+        'UPDATE sort_items SET firstRowItem = ? WHERE userId = ?',
         [firstRowItems.id, userId]
       );
     } else {
       // Insert new firstRowItem if none exists
       await conn.query(
-        "INSERT INTO sort_items (userId, firstRowItem) VALUES (?, ?)",
+        'INSERT INTO sort_items (userId, firstRowItem) VALUES (?, ?)',
         [userId, firstRowItems.id]
       );
     }
@@ -99,27 +109,99 @@ export const updateSortedItems = async (req, res) => {
     // First, delete existing secondRowItems for this user
     let sortItemId = existing
       ? existing.id
-      : (await conn.query("SELECT LAST_INSERT_ID() AS id")).id;
-    await conn.query("DELETE FROM second_row_items WHERE sortItem_id = ?", [
+      : (await conn.query('SELECT LAST_INSERT_ID() AS id')).id;
+    await conn.query('DELETE FROM second_row_items WHERE sortItem_id = ?', [
       sortItemId,
     ]);
 
     // Now, insert the new secondRowItems
     for (const item of secondRowItems) {
       await conn.query(
-        "INSERT INTO second_row_items (sortItem_id, personId, placeholder, text) VALUES (?, ?, ?, ?)",
+        'INSERT INTO second_row_items (sortItem_id, personId, placeholder, text) VALUES (?, ?, ?, ?)',
         [sortItemId, item.id, item.placeholder, item.text]
       );
     }
 
     await conn.commit();
-    res.json({ message: "Sorted items updated successfully" });
+    res.json({ message: 'Sorted items updated successfully' });
   } catch (error) {
     await conn.rollback();
-    console.error("Error processing your request:", error);
+    console.error('Error processing your request:', error);
     res
       .status(500)
-      .json({ error: "Internal Server Error", details: error.message });
+      .json({ error: 'Internal Server Error', details: error.message });
+  } finally {
+    if (conn) conn.release();
+  }
+}; */
+
+export const updateSortedItems = async (req, res) => {
+  const { firstRowItems, secondRowItems } = req.body;
+  const userId = 1;
+
+  let conn;
+
+  try {
+    conn = await pool.getConnection();
+    await conn.beginTransaction();
+
+    // Check if an entry exists for this user
+    let [existing] = await conn.query(
+      'SELECT id FROM sort_items WHERE userId = ?',
+      [userId]
+    );
+
+    // Determine if firstRowItems is meant to be removed (set to null)
+    if (firstRowItems === null) {
+      // Set firstRowItem to null
+      if (existing) {
+        await conn.query(
+          'UPDATE sort_items SET firstRowItem = NULL WHERE userId = ?',
+          [userId]
+        );
+      }
+      // If not existing, no need to insert a new record just to set it to null
+    } else if (firstRowItems && Object.keys(firstRowItems).length > 0) {
+      // Handle normal update or insert of firstRowItem
+      if (existing) {
+        await conn.query(
+          'UPDATE sort_items SET firstRowItem = ? WHERE userId = ?',
+          [firstRowItems.id, userId]
+        );
+      } else {
+        await conn.query(
+          'INSERT INTO sort_items (userId, firstRowItem) VALUES (?, ?)',
+          [userId, firstRowItems.id]
+        );
+      }
+    }
+
+    // Handling secondRowItems
+    let sortItemId = existing
+      ? existing.id
+      : (await conn.query('SELECT LAST_INSERT_ID() AS id'))[0].id;
+
+    // First, delete existing secondRowItems for this user
+    await conn.query('DELETE FROM second_row_items WHERE sortItem_id = ?', [
+      sortItemId,
+    ]);
+
+    // Now, insert the new secondRowItems
+    for (const item of secondRowItems) {
+      await conn.query(
+        'INSERT INTO second_row_items (sortItem_id, personId, placeholder, text) VALUES (?, ?, ?, ?)',
+        [sortItemId, item.id, item.placeholder, item.text]
+      );
+    }
+
+    await conn.commit();
+    res.json({ message: 'Sorted items updated successfully' });
+  } catch (error) {
+    await conn.rollback();
+    console.error('Error processing your request:', error);
+    res
+      .status(500)
+      .json({ error: 'Internal Server Error', details: error.message });
   } finally {
     if (conn) conn.release();
   }
@@ -185,18 +267,26 @@ export const getAllSortedItems = async (req, res) => {
   try {
     conn = await pool.getConnection();
     const query = `
-            SELECT 
-                si.id AS sortItemId, si.firstRowItem AS firstRowPersonId, 
-                p.firstName AS firstRowFirstName, p.lastName AS firstRowLastName, p.featured AS firstRowFeatured,
-                sp.id AS secondRowPersonId, sp.firstName AS secondRowFirstName, 
-                sp.lastName AS secondRowLastName, sp.featured AS secondRowFeatured
-            FROM sort_items si
-            JOIN persons p ON si.firstRowItem = p.id
-            LEFT JOIN second_row_items sr ON si.id = sr.sortItem_id
-            LEFT JOIN persons sp ON sr.personId = sp.id
+           SELECT 
+          si.id AS sortItemId, 
+          si.firstRowItem AS firstRowPersonId, 
+          p.firstName AS firstRowFirstName, 
+          p.lastName AS firstRowLastName, 
+          p.featured AS firstRowFeatured,
+          sp.id AS secondRowPersonId, 
+          sp.firstName AS secondRowFirstName, 
+          sp.lastName AS secondRowLastName, 
+          sp.featured AS secondRowFeatured
+          FROM sort_items si
+          LEFT JOIN persons p ON si.firstRowItem = p.id
+          LEFT JOIN second_row_items sr ON si.id = sr.sortItem_id
+          LEFT JOIN persons sp ON sr.personId = sp.id;
         `;
     const results = await conn.query(query);
+
     const rows = Array.isArray(results) ? results : [results];
+
+    console.log(results);
 
     const response = {
       firstRowItems: {},
@@ -225,10 +315,10 @@ export const getAllSortedItems = async (req, res) => {
 
     res.json(response);
   } catch (error) {
-    console.error("Failed to retrieve sorted items:", error);
+    console.error('Failed to retrieve sorted items:', error);
     res
       .status(500)
-      .json({ error: "Internal Server Error", details: error.message });
+      .json({ error: 'Internal Server Error', details: error.message });
   } finally {
     if (conn) conn.release();
   }

@@ -915,7 +915,7 @@ async function removeEmptyDirectories(directory) {
   }
 }
 
-export async function deletePerson(req, res) {
+/* export async function deletePerson(req, res) {
   const { personId } = req.params;
   let conn;
 
@@ -992,7 +992,7 @@ export async function deletePerson(req, res) {
       conn.release();
     }
   }
-}
+} */
 
 export const deleteMediaById = async (req, res) => {
   const { mediaId } = req.params;
@@ -1045,3 +1045,75 @@ export const deleteMediaById = async (req, res) => {
     if (conn) await conn.end();
   }
 };
+
+export async function deletePerson(req, res) {
+  const { personId } = req.params;
+  let conn;
+
+  try {
+    conn = await pool.getConnection();
+    await conn.beginTransaction();
+
+    // Get the URLs of all files associated with the person's works
+    const files = await conn.query(
+      `SELECT media.url FROM media JOIN works ON works.id = media.work_id WHERE works.person_id = ?;`,
+      [personId]
+    );
+
+    // Check if there are files to delete
+    if (files.length > 0) {
+      const deletePromises = files.map(async (file) => {
+        try {
+          // Resolve the file path from the URL
+          const filePath = path.resolve(
+            __dirname,
+            '../public/works',
+            new URL(file.url).pathname.substring(1)
+          );
+
+          // Attempt to delete the file
+          await unlinkAsync(filePath);
+
+          // Attempt to remove any empty directories after the file deletion
+          await removeEmptyDirectories(path.dirname(filePath));
+        } catch (err) {
+          console.error(`Error processing file URL ${file.url}:`, err);
+          return Promise.resolve(); // Resolve to avoid breaking Promise.all
+        }
+      });
+
+      await Promise.all(deletePromises);
+    } else {
+      console.log('No files found for person, but continuing to delete person');
+    }
+
+    // Delete the person; assuming cascade deletes are setup to handle works/media
+    const personDeleteResult = await conn.query(
+      'DELETE FROM persons WHERE id = ?',
+      [personId]
+    );
+    if (personDeleteResult.affectedRows === 0) {
+      await conn.rollback();
+      return res.status(404).json({ message: 'Person not found.' });
+    }
+
+    await conn.commit();
+    res.json({
+      message:
+        'Person deleted successfully along with associated files (if any).',
+    });
+  } catch (error) {
+    console.error(
+      'An error occurred while deleting the person and files:',
+      error
+    );
+    await conn.rollback();
+    res.status(500).json({
+      message: 'An error occurred while deleting the person and files.',
+    });
+  } finally {
+    if (conn) {
+      conn.release();
+    }
+  }
+}

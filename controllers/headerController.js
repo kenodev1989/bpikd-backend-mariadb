@@ -33,7 +33,7 @@ export const updateHeaderConfig = async (req, res) => {
   const { routes, buttons } = req.body;
   const logoImgPath = req.file
     ? `${req.protocol}://${req.get('host')}/uploads/header/${req.file.filename}`
-    : '';
+    : null;
 
   let conn;
   try {
