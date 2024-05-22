@@ -5,8 +5,10 @@ const router = express.Router();
 
 router.post('/', async (req, res) => {
   const { isPlaying, active, text } = req.body;
+
+  let conn;
   try {
-    const conn = await pool.getConnection();
+    conn = await pool.getConnection();
     const results = await conn.query('SELECT id FROM text_settings LIMIT 1');
     let result;
     if (results.length === 0) {
@@ -44,8 +46,9 @@ router.post('/', async (req, res) => {
 
 // GET settings data
 router.get('/', async (req, res) => {
+  let conn;
   try {
-    const conn = await pool.getConnection();
+    conn = await pool.getConnection();
     const results = await conn.query('SELECT * FROM text_settings LIMIT 1'); // Fetch the single row
     conn.release();
     if (results.length > 0) {
