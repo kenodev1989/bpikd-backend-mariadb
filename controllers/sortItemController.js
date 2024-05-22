@@ -286,8 +286,6 @@ export const getAllSortedItems = async (req, res) => {
 
     const rows = Array.isArray(results) ? results : [results];
 
-    console.log(results);
-
     const response = {
       firstRowItems: {},
       secondRowItems: [],

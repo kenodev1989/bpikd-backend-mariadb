@@ -1,7 +1,6 @@
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
-import fs from 'fs';
 import pool from '../db/config.js'; // Ensure your database configuration is correctly imported
 
 const router = express.Router();
@@ -50,6 +49,7 @@ router.post('/', upload, async (req, res) => {
           ? req.files[`partnersImages-${index}`][0]
           : null;
         let filePath = partnerData.imagePath;
+        const url = partnerData.url || ''; // Default to empty string if no URL provided
 
         if (file) {
           // If a new file is uploaded, update the file path
@@ -68,19 +68,20 @@ router.post('/', upload, async (req, res) => {
         }
 
         if (partnerData.id) {
-          // Update existing company info
+          // Update existing partner info
           await conn.query(
-            'UPDATE partners SET imagePath = ?, createdAt = NOW() WHERE id = ?',
-            [filePath, partnerData.id]
+            'UPDATE partners SET imagePath = ?, url = ?, createdAt = NOW() WHERE id = ?',
+            [filePath, url, partnerData.id]
           );
         } else {
+          // Insert new partner info
           const result = await conn.query(
-            'INSERT INTO partners (imagePath, createdAt) VALUES (?, NOW())',
-            [filePath]
+            'INSERT INTO partners (imagePath, url, createdAt) VALUES (?, ?, NOW())',
+            [filePath, url]
           );
           partnerData.id = result.insertId.toString(); // Update partnerData with new ID
         }
-        return { ...partnerData, imagePath: filePath }; // Return the updated company info
+        return { ...partnerData, imagePath: filePath, url }; // Return the updated partner info
       })
     );
 
@@ -110,7 +111,6 @@ router.get('/', async (req, res) => {
       // Properly handle the case where no records are found
       return res.status(404).json({ message: 'No partners found' });
     }
-    console.log(results);
 
     // Return all the fetched records properly formatted as JSON
     res.json({
