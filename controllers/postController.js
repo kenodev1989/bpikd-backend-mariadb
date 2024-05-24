@@ -58,9 +58,7 @@ export const addNews = async (req, res) => {
   let featuredImage;
   if (req.files?.featuredImage?.[0]) {
     const file = req.files.featuredImage[0];
-    featuredImage = `${req.protocol}://${req.get('host')}/uploads/${
-      file.filename
-    }`;
+    featuredImage = `${protocol}://${req.get('host')}/uploads/${file.filename}`;
   } else {
     featuredImage = null; // Handle the case where there's no featured image
   }
@@ -265,9 +263,7 @@ export const addOrUpdatePagesPost = async (req, res) => {
   let featuredImage;
   if (req.files?.featuredImage?.[0]) {
     const file = req.files.featuredImage[0];
-    featuredImage = `${req.protocol}://${req.get('host')}/uploads/${
-      file.filename
-    }`;
+    featuredImage = `${protocol}://${req.get('host')}/uploads/${file.filename}`;
   } else {
     featuredImage = null;
   }
@@ -420,7 +416,7 @@ export const updateNewsById = async (req, res) => {
     let featuredImage;
     if (req.files?.featuredImage?.[0]) {
       const file = req.files.featuredImage[0];
-      featuredImage = `${req.protocol}://${req.get('host')}/uploads/${
+      featuredImage = `${protocol}://${req.get('host')}/uploads/${
         file.filename
       }`;
     } else {

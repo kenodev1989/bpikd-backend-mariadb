@@ -28,6 +28,8 @@ function serializeBigInt(key, value) {
   }
 }
 
+let protocol = process.env.PROTOCOL;
+
 /**
  * Schedules a job to set isPublished to true at a specified UTC time.
  * @param {string} workId - The ID of the work item to publish.
@@ -78,7 +80,7 @@ export const addOrUpdatePersonAndWork = async (req, res) => {
 
     let featuredImage =
       req.files && req.files.featuredImage && req.files.featuredImage[0]
-        ? `${req.protocol}://${req.get('host')}/featured/${
+        ? `${protocol}://${req.get('host')}/featured/${
             req.files.featuredImage[0].filename
           }`
         : null;
@@ -165,7 +167,7 @@ export const addOrUpdatePersonAndWork = async (req, res) => {
     ['images', 'videos', 'audios', 'documents'].forEach((type) => {
       if (req.files && req.files[type]) {
         req.files[type].forEach((file) => {
-          const filePath = `${req.protocol}://${req.get('host')}/${slugify(
+          const filePath = `${protocol}://${req.get('host')}/${slugify(
             title
           )}/${type}/${slugify(file.originalname)}`;
           media[type].push({
@@ -448,7 +450,7 @@ export const updatePersonBasicById = async (req, res) => {
     const { firstName, lastName, aboutPerson, featured } = data;
 
     let featuredImage = req.file
-      ? `${req.protocol}://${req.get('host')}/featured/${req.file.filename}`
+      ? `${protocol}://${req.get('host')}/featured/${req.file.filename}`
       : featured;
 
     console.log(featuredImage);
