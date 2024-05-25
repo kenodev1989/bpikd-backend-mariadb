@@ -23,6 +23,8 @@ connectDB();
 
 const app = express();
 
+app.enable('trust proxy');
+
 // CORS middleware setup to allow requests from specified origins
 app.use((req, res, next) => {
   res.setHeader(
