@@ -15,9 +15,9 @@ const pool = mariadb.createPool({
   port: process.env.NODE_DB_PORT,
   password: process.env.NODE_DB_PASS,
   database: process.env.NODE_DB_NAME,
-  connectionLimit: 20,
-  acquireTimeout: 20000,
-  connectTimeout: 20000,
+  connectionLimit: 50,
+  acquireTimeout: 30000,
+  connectTimeout: 30000,
 });
 
 export default pool;

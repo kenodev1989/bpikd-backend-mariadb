@@ -10,11 +10,11 @@ import {
   deleteWorkById,
   getAllPersonsWithData,
   getPersonBasics,
-  getPersonBasicsById,
   getPersonWithWorksAndMedia,
   getPersonWithWorksAndMediaById,
   getPersonWithWorksById,
   getWorkWithMediaById,
+  insertWorkView,
   searchPersonsByPartialName,
   updatePersonBasicById,
   updateWorkById,
@@ -129,6 +129,25 @@ router.post(
               type: type,
             };
 
+            /*    if (type === 'videos') {
+              // Define where to save the thumbnail
+              const outputPath = 'path/to/save/thumbnails'; // Adjust according to your actual path
+              const thumbnailPromise = generateThumbnail(
+                file.path,
+                outputPath,
+                '00:00:01'
+              )
+                .then((thumbnailPath) => {
+                  console.log('Thumbnail saved to:', thumbnailPath);
+                  mediaItem.thumbnail = thumbnailPath;
+                })
+                .catch((err) =>
+                  console.error('Failed to generate thumbnail:', err)
+                );
+
+              promises.push(thumbnailPromise);
+            } */
+
             media[type].push(mediaItem);
             promises.push(
               conn
@@ -158,6 +177,74 @@ router.post(
     }
   }
 );
+
+async function fetchWorkDetails(workId, conn) {
+  const query = `
+    SELECT w.id, w.title, w.content, w.person_id, w.publishTime, w.isPublished, w.scheduledPublishTime, w.externalSource, w.work_view_count,
+           m.id AS mediaId, m.url, m.name AS mediaName, m.fileType, m.type
+    FROM works w
+    LEFT JOIN media m ON w.id = m.work_id
+    WHERE w.id = ?;
+  `;
+  const rows = await conn.query(query, [workId]);
+  if (rows.length > 0) {
+    let workDetails = {
+      id: rows[0].id,
+      title: rows[0].title,
+      content: rows[0].content,
+      person_id: rows[0].person_id,
+      publishTime: rows[0].publishTime,
+      isPublished: rows[0].isPublished,
+      scheduledPublishTime: rows[0].scheduledPublishTime,
+      externalSource: rows[0].externalSource,
+      work_view_count: rows[0].work_view_count,
+      media: { images: [], videos: [], audios: [], documents: [] },
+    };
+
+    rows.forEach((row) => {
+      if (row.mediaId) {
+        let mediaType = row.type.toLowerCase();
+        if (workDetails.media.hasOwnProperty(mediaType)) {
+          workDetails.media[mediaType].push({
+            mediaId: row.mediaId,
+            url: row.url,
+            name: row.mediaName,
+            fileType: row.fileType,
+          });
+        }
+      }
+    });
+
+    return workDetails;
+  } else {
+    throw new Error('Work not found');
+  }
+}
+
+router.get('/works/:workId', async (req, res) => {
+  if (!req.params || !req.params.workId) {
+    return res.status(400).send('Work ID is required');
+  }
+  const { workId } = req.params;
+  const ipAddress = req.ip;
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    // Record the view
+
+    await insertWorkView(workId, ipAddress);
+
+    // Fetch and send the work details
+    const workDetails = await fetchWorkDetails(workId, conn);
+    res.json(workDetails);
+  } catch (error) {
+    console.error('Error handling request for work details:', error);
+    res
+      .status(500)
+      .json({ error: 'Internal Server Error', details: error.message });
+  }
+});
 
 router.get('/data/:personId', getPersonWithWorksAndMediaById);
 router.get('/work/:workId', getWorkWithMediaById);

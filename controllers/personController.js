@@ -73,8 +73,6 @@ export const addOrUpdatePersonAndWork = async (req, res) => {
       isPublished,
     } = data;
 
-    console.log(data);
-
     conn = await pool.getConnection();
     await conn.beginTransaction();
 
@@ -117,7 +115,7 @@ export const addOrUpdatePersonAndWork = async (req, res) => {
         ]
       );
       personId = result.insertId;
-      console.log('New person inserted with ID:', personId); // Log new person ID
+      console.log('New person inserted with ID:', personId);
     }
 
     const scheduledTimeUTC = moment
@@ -520,7 +518,8 @@ export const getPersonBasicsById = async (req, res) => {
                 firstName,
                 lastName,
                 featured,
-                aboutPerson
+                aboutPerson,
+                scheduledPublishTime
             FROM 
                 persons
             WHERE
@@ -559,7 +558,7 @@ export const getPersonWithWorksById = async (req, res) => {
   FROM persons p
   LEFT JOIN works w ON p.id = w.person_id
   WHERE p.id = ?
-  ORDER BY w.id;
+  ORDER BY w.scheduledPublishTime DESC;
 `;
 
     const rows = await conn.query(query, [personId]);
@@ -601,24 +600,89 @@ export const getPersonWithWorksById = async (req, res) => {
   }
 };
 
+// Assuming you use Node.js and MySQL/MariaDB driver
+
+export const insertWorkView = async (workId, ipAddress) => {
+  const today = new Date().toISOString().slice(0, 10); // Format today's date as YYYY-MM-DD
+  console.log(workId);
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    // Check if the view already exists for today
+    const checkQuery = `
+            SELECT 1 FROM work_views WHERE work_id = ? AND ip_address = ? AND view_date = ?
+        `;
+    const exists = await conn.query(checkQuery, [workId, ipAddress, today]);
+
+    if (exists && exists.length === 0) {
+      // Log the new view
+      const insertQuery = `
+                INSERT INTO work_views (work_id, ip_address, view_date) VALUES (?, ?, ?)
+            `;
+      await conn.query(insertQuery, [workId, ipAddress, today]);
+
+      // Increment the work view count
+      const updateQuery = `
+                UPDATE works SET work_view_count = work_view_count + 1 WHERE id = ?
+            `;
+      await conn.query(updateQuery, [workId]);
+    }
+  } catch (error) {
+    console.error('Failed to log work view:', error);
+    throw error; // Rethrowing the error for caller to handle
+  } finally {
+    conn.release();
+  }
+};
+
 export const getPersonWithWorksAndMediaById = async (req, res) => {
   const { personId } = req.params; // assuming person ID is sent as a URL parameter
+  const ipAddress = req.ip; // Get the IP address from the request
+  const today = new Date().toISOString().slice(0, 10); // Get today's date in YYYY-MM-DD format
 
   let conn;
   try {
     conn = await pool.getConnection();
 
+    // First, check if this IP has viewed this person today
+    const checkIpQuery = `
+      SELECT 1 FROM person_views WHERE person_id = ? AND ip_address = ? AND view_date = ?
+    `;
+    const ipExists = await conn.query(checkIpQuery, [
+      personId,
+      ipAddress,
+      today,
+    ]);
+
+    // If this IP hasn't logged a view today, log the view and increment the counter
+    if (ipExists.length === 0) {
+      // Insert the view log
+      const logIpQuery = `
+        INSERT INTO person_views (person_id, ip_address, view_date) VALUES (?, ?, ?)
+      `;
+      await conn.query(logIpQuery, [personId, ipAddress, today]);
+
+      // Increment the view count in the persons table
+      const incrementViewCount = `
+        UPDATE persons SET view_count = view_count + 1 WHERE id = ?
+      `;
+      await conn.query(incrementViewCount, [personId]);
+    }
+
     // Query to fetch person details, works, and associated media
     const query = `
-            SELECT p.id AS personId, p.firstName, p.lastName, p.aboutPerson, p.featured,
-                   w.id AS workId, w.title, w.content, w.publishTime, w.isPublished, w.scheduledPublishTime, w.externalSource,
-                   m.id AS mediaId, m.url, m.name AS mediaName, m.fileType, m.type
-            FROM persons p
-            LEFT JOIN works w ON p.id = w.person_id
-            LEFT JOIN media m ON w.id = m.work_id
-            WHERE p.id = ?
-            ORDER BY w.id, m.id;
-        `;
+  SELECT p.id AS personId, p.firstName, p.lastName, p.aboutPerson, p.featured, p.created_at,p.view_count,
+         p.scheduledPublishTime AS personScheduledPublishTime, -- Aliased to personScheduledPublishTime
+         w.id AS workId, w.title, w.content, w.publishTime, w.isPublished,
+         w.scheduledPublishTime AS workScheduledPublishTime, -- Aliased to workScheduledPublishTime
+         w.externalSource, w.work_view_count, 
+         m.id AS mediaId, m.url, m.name AS mediaName, m.fileType, m.type
+  FROM persons p
+  LEFT JOIN works w ON p.id = w.person_id
+  LEFT JOIN media m ON w.id = m.work_id
+  WHERE p.id = ?
+  ORDER BY w.scheduledPublishTime DESC, m.id;
+`;
 
     const rows = await conn.query(query, [personId]);
 
@@ -629,6 +693,9 @@ export const getPersonWithWorksAndMediaById = async (req, res) => {
       lastName: rows[0]?.lastName,
       aboutPerson: rows[0]?.aboutPerson,
       featured: rows[0]?.featured,
+      scheduledPublishTime: rows[0]?.personScheduledPublishTime,
+      createdAt: rows[0]?.created_at,
+      personViewCount: rows[0]?.view_count,
       works: [],
     };
 
@@ -647,7 +714,8 @@ export const getPersonWithWorksAndMediaById = async (req, res) => {
           content: row.content,
           publishTime: row.publishTime,
           isPublished: row.isPublished,
-          scheduledPublishTime: row.scheduledPublishTime,
+          scheduledPublishTime: row.workScheduledPublishTime,
+          work_view_count: row.work_view_count,
           externalSource: row.externalSource,
           media: { images: [], videos: [], audios: [], documents: [] },
         };
@@ -709,7 +777,7 @@ export const getWorkWithMediaById = async (req, res) => {
   try {
     conn = await pool.getConnection();
     const query = `
-      SELECT w.id, w.title, w.content, w.person_id, w.publishTime, w.isPublished, w.scheduledPublishTime, w.externalSource,
+      SELECT w.id, w.title, w.content, w.person_id, w.publishTime, w.isPublished, w.scheduledPublishTime, w.externalSource, w.work_view_count, 
              m.id AS mediaId, m.url, m.name AS mediaName, m.fileType, m.type
       FROM works w
       LEFT JOIN media m ON w.id = m.work_id
@@ -727,6 +795,7 @@ export const getWorkWithMediaById = async (req, res) => {
         isPublished: rows[0].isPublished,
         scheduledPublishTime: rows[0].scheduledPublishTime, // Adding scheduled publish time
         externalSource: rows[0].externalSource,
+        work_view_count: rows[0].work_view_count,
         media: { images: [], videos: [], audios: [], documents: [] },
       };
 
