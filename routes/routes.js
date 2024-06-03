@@ -29,6 +29,7 @@ app.use('/settings', textSettingRoutes);
 app.use('/footer', footerRoutes);
 
 app.use('/theme', themeRoutes);
+
 app.use('/header', headerRoutes);
 
 app.use('/post/persons', personsRoutes);

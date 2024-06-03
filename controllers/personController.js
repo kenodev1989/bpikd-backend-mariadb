@@ -604,29 +604,17 @@ export const getPersonWithWorksById = async (req, res) => {
 
 export const insertWorkView = async (workId, ipAddress) => {
   const today = new Date().toISOString().slice(0, 10); // Format today's date as YYYY-MM-DD
-  console.log(workId);
+
   let conn;
   try {
     conn = await pool.getConnection();
     // Check if the view already exists for today
-    const checkQuery = `
-            SELECT 1 FROM work_views WHERE work_id = ? AND ip_address = ? AND view_date = ?
-        `;
-    const exists = await conn.query(checkQuery, [workId, ipAddress, today]);
 
-    if (exists && exists.length === 0) {
-      // Log the new view
-      const insertQuery = `
-                INSERT INTO work_views (work_id, ip_address, view_date) VALUES (?, ?, ?)
-            `;
-      await conn.query(insertQuery, [workId, ipAddress, today]);
-
-      // Increment the work view count
-      const updateQuery = `
+    // Increment the work view count
+    const updateQuery = `
                 UPDATE works SET work_view_count = work_view_count + 1 WHERE id = ?
             `;
-      await conn.query(updateQuery, [workId]);
-    }
+    await conn.query(updateQuery, [workId]);
   } catch (error) {
     console.error('Failed to log work view:', error);
     throw error; // Rethrowing the error for caller to handle
@@ -644,30 +632,11 @@ export const getPersonWithWorksAndMediaById = async (req, res) => {
   try {
     conn = await pool.getConnection();
 
-    // First, check if this IP has viewed this person today
-    const checkIpQuery = `
-      SELECT 1 FROM person_views WHERE person_id = ? AND ip_address = ? AND view_date = ?
+    // Directly increment the view count in the persons table
+    const incrementViewCount = `
+      UPDATE persons SET view_count = view_count + 1 WHERE id = ?
     `;
-    const ipExists = await conn.query(checkIpQuery, [
-      personId,
-      ipAddress,
-      today,
-    ]);
-
-    // If this IP hasn't logged a view today, log the view and increment the counter
-    if (ipExists.length === 0) {
-      // Insert the view log
-      const logIpQuery = `
-        INSERT INTO person_views (person_id, ip_address, view_date) VALUES (?, ?, ?)
-      `;
-      await conn.query(logIpQuery, [personId, ipAddress, today]);
-
-      // Increment the view count in the persons table
-      const incrementViewCount = `
-        UPDATE persons SET view_count = view_count + 1 WHERE id = ?
-      `;
-      await conn.query(incrementViewCount, [personId]);
-    }
+    await conn.query(incrementViewCount, [personId]);
 
     // Query to fetch person details, works, and associated media
     const query = `
