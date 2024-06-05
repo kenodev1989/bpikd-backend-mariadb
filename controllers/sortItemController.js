@@ -270,23 +270,23 @@ export const getAllSortedItems = async (req, res) => {
   let conn;
   try {
     conn = await pool.getConnection();
-    const query = `
-           SELECT 
-          si.id AS sortItemId, 
-          si.firstRowItem AS firstRowPersonId, 
-          p.firstName AS firstRowFirstName, 
-          p.lastName AS firstRowLastName, 
-          p.featured AS firstRowFeatured,
-          sp.id AS secondRowPersonId, 
-          sp.firstName AS secondRowFirstName, 
-          sp.lastName AS secondRowLastName, 
-          sp.featured AS secondRowFeatured
-          FROM sort_items si
-          LEFT JOIN persons p ON si.firstRowItem = p.id
-          LEFT JOIN second_row_items sr ON si.id = sr.sortItem_id
-          LEFT JOIN persons sp ON sr.personId = sp.id;
-        `;
-    const results = await conn.query(query);
+    const results = await conn.query(`
+        SELECT 
+        si.id AS sortItemId, 
+        si.firstRowItem AS firstRowPersonId, 
+        p.firstName AS firstRowFirstName, 
+        p.lastName AS firstRowLastName, 
+        p.featured AS firstRowFeatured,
+        sp.id AS secondRowPersonId, 
+        sp.firstName AS secondRowFirstName, 
+        sp.lastName AS secondRowLastName, 
+        sp.featured AS secondRowFeatured,
+        sr.placeholder AS secondRowPlaceholder
+        FROM sort_items si
+        LEFT JOIN persons p ON si.firstRowItem = p.id
+        LEFT JOIN second_row_items sr ON si.id = sr.sortItem_id
+        LEFT JOIN persons sp ON sr.personId = sp.id;
+    `);
 
     const rows = Array.isArray(results) ? results : [results];
 
@@ -302,15 +302,16 @@ export const getAllSortedItems = async (req, res) => {
           id: String(row.firstRowPersonId),
           firstName: row.firstRowFirstName,
           lastName: row.firstRowLastName,
-          featured: row.firstRowFeatured,
+          featured: row.firstRowFeatured || '/assets/no-picture.png',
         };
       }
-      if (row.secondRowPersonId) {
+      if (row.secondRowPersonId || row.secondRowPlaceholder) {
         response.secondRowItems.push({
-          id: String(row.secondRowPersonId),
+          id: row.secondRowPersonId ? String(row.secondRowPersonId) : null,
           firstName: row.secondRowFirstName,
           lastName: row.secondRowLastName,
-          featured: row.secondRowFeatured,
+          featured: row.secondRowFeatured || '/assets/no-picture.png',
+          placeholder: row.secondRowPlaceholder,
         });
       }
     });
