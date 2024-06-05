@@ -151,18 +151,14 @@ export const updateSortedItems = async (req, res) => {
       [userId]
     );
 
-    // Determine if firstRowItems is meant to be removed (set to null)
     if (firstRowItems === null) {
-      // Set firstRowItem to null
       if (existing) {
         await conn.query(
           'UPDATE sort_items SET firstRowItem = NULL WHERE userId = ?',
           [userId]
         );
       }
-      // If not existing, no need to insert a new record just to set it to null
     } else if (firstRowItems && Object.keys(firstRowItems).length > 0) {
-      // Handle normal update or insert of firstRowItem
       if (existing) {
         await conn.query(
           'UPDATE sort_items SET firstRowItem = ? WHERE userId = ?',
@@ -176,22 +172,30 @@ export const updateSortedItems = async (req, res) => {
       }
     }
 
-    // Handling secondRowItems
     let sortItemId = existing
       ? existing.id
       : (await conn.query('SELECT LAST_INSERT_ID() AS id'))[0].id;
 
-    // First, delete existing secondRowItems for this user
+    // Delete existing secondRowItems for this user
     await conn.query('DELETE FROM second_row_items WHERE sortItem_id = ?', [
       sortItemId,
     ]);
 
-    // Now, insert the new secondRowItems
+    // Insert new secondRowItems
     for (const item of secondRowItems) {
-      await conn.query(
-        'INSERT INTO second_row_items (sortItem_id, personId, placeholder, text) VALUES (?, ?, ?, ?)',
-        [sortItemId, item.id, item.placeholder, item.text]
-      );
+      if (item.placeholder) {
+        // Handling placeholders
+        await conn.query(
+          'INSERT INTO second_row_items (sortItem_id, personId, placeholder, text) VALUES (?, NULL, ?, ?)',
+          [sortItemId, item.placeholder, item.text]
+        );
+      } else {
+        // Handling real person items
+        await conn.query(
+          'INSERT INTO second_row_items (sortItem_id, personId, placeholder, text) VALUES (?, ?, FALSE, ?)',
+          [sortItemId, item.id, item.text]
+        );
+      }
     }
 
     await conn.commit();

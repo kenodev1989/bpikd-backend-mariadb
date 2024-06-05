@@ -10,6 +10,7 @@ import searchRoutes from './searchRoutes.js';
 import visitorsRoute from './vistiorsRoute.js';
 import textSettingRoutes from './textSettingRoutes.js';
 import themeRoutes from './themeRoutes.js';
+import backupRoutes from './backupRoutes.js';
 
 /* const wordsRoutes = require("./words"); */
 
@@ -40,6 +41,8 @@ app.use('/post/partners', partnersRoutes);
 app.use('/search', searchRoutes);
 
 app.use('/visitors', visitorsRoute);
+
+app.use('/download', backupRoutes);
 /* app.use("/words", wordsRoutes); */
 
 export default app;
