@@ -1,0 +1,18 @@
+{"level":"info","message":"Server running in undefined mode on port 8000","service":"user-service","timestamp":"2024-07-14 15:31:09"}
+{"level":"info","message":"MariaDB Connected!","service":"user-service","timestamp":"2024-07-14 15:31:10"}
+{"level":"info","message":"Server running in undefined mode on port 8000","service":"user-service","timestamp":"2024-07-14 15:32:22"}
+{"level":"info","message":"MariaDB Connected!","service":"user-service","timestamp":"2024-07-14 15:32:22"}
+{"level":"info","message":"Server running in undefined mode on port 8000","service":"user-service","timestamp":"2024-07-14 15:33:24"}
+{"level":"info","message":"MariaDB Connected!","service":"user-service","timestamp":"2024-07-14 15:33:24"}
+{"level":"info","message":"Server running in undefined mode on port 8000","timestamp":"2024-07-14T13:36:40.088Z"}
+{"level":"info","message":"Server running in undefined mode on port 8000","timestamp":"2024-07-14T13:37:14.486Z"}
+{"level":"info","message":"Server running in undefined mode on port 8000","timestamp":"2024-07-14T13:37:37.385Z"}
+{"level":"info","message":"Server running in undefined mode on port 8000","timestamp":"2024-07-14T13:38:03.696Z"}
+{"level":"info","message":"Server running in undefined mode on port 8000","timestamp":"2024-07-14T13:38:57.419Z"}
+{"level":"info","message":"Server running in undefined mode on port 8000","timestamp":"2024-07-14T13:39:08.206Z"}
+{"level":"info","message":"Server running in undefined mode on port 8000","service":"user-service","timestamp":"2024-07-14 15:39:12"}
+{"level":"info","message":"MariaDB Connected!","service":"user-service","timestamp":"2024-07-14 15:39:12"}
+{"level":"info","message":"Server running in undefined mode on port 8000","timestamp":"2024-07-14T13:48:33.105Z"}
+{"level":"info","message":"MariaDB Connected!","timestamp":"2024-07-14T13:48:33.316Z"}
+{"level":"info","message":"Server running in undefined mode on port 8000","timestamp":"2024-07-14T13:48:58.718Z"}
+{"level":"info","message":"MariaDB Connected!","timestamp":"2024-07-14T13:48:58.936Z"}

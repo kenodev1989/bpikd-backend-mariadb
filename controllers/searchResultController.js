@@ -42,21 +42,7 @@ export const searchItems = async (req, res) => {
       // Copy the setup for queryPart, modify as needed for counting
       countPart = `(SELECT COUNT(*) FROM ${table} WHERE 1=1`;
 
-      // Handling various text-based search criteria
-      /* if (searchTerm) {
-        let searchTerms = Array.isArray(searchTerm) ? searchTerm : [searchTerm];
-        searchTerms.forEach((term) => {
-          const likeClause =
-            table === 'persons'
-              ? `(firstName LIKE ? OR lastName LIKE ?)`
-              : `(title LIKE ? OR content LIKE ?)`;
-          queryPart += ' AND ' + likeClause;
-          params.push(`%${term.trim()}%`, `%${term.trim()}%`);
-          countParams.push(`%${searchTerm}%`, `%${searchTerm}%`);
-        });
-      } */
-
-      if (searchTerm || searchTerm !== '') {
+      if (searchTerm) {
         let words = Array.isArray(searchTerm) ? searchTerm : [searchTerm];
         if (words.length > 0) {
           queryPart += ' AND ('; // Start the group of OR conditions

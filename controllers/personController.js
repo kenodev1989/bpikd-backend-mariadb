@@ -12,6 +12,7 @@ import * as schedule from 'node-schedule';
 
 import moment from 'moment-timezone';
 import { slugify } from '../utils/slugify.js';
+import { baseRoute } from '../helpers/config.js';
 
 const app = express();
 app.use(bodyParser.urlencoded({ extended: true })); // o
@@ -78,7 +79,7 @@ export const addOrUpdatePersonAndWork = async (req, res) => {
 
     let featuredImage =
       req.files && req.files.featuredImage && req.files.featuredImage[0]
-        ? `${protocol}://${req.get('host')}/featured/${
+        ? `${protocol}://${req.get('host')}/${baseRoute}/featured/${
             req.files.featuredImage[0].filename
           }`
         : null;
@@ -89,11 +90,8 @@ export const addOrUpdatePersonAndWork = async (req, res) => {
     );
 
     let personId = existing ? existing.id : null;
-    /* let personId = existing && existing.length > 0 ? existing.id : null; */
-    console.log('Determined person ID:', existing); // Additional debug information
 
     if (personId) {
-      console.log('Using existing person ID:', personId); // This should appear if a person is found
       if (featuredImage) {
         await conn.query('UPDATE persons SET featured = ? WHERE id = ?', [
           featuredImage,
@@ -115,7 +113,6 @@ export const addOrUpdatePersonAndWork = async (req, res) => {
         ]
       );
       personId = result.insertId;
-      console.log('New person inserted with ID:', personId);
     }
 
     const scheduledTimeUTC = moment
@@ -126,12 +123,7 @@ export const addOrUpdatePersonAndWork = async (req, res) => {
     // Current time in UTC as a Date object
     const currentTimeUTC = new Date();
 
-    console.log(`Scheduled Time UTC: ${scheduledTimeUTC}`);
-    console.log(`Current Time UTC: ${currentTimeUTC}`);
-
     const validScheduledTime = scheduledTimeUTC > currentTimeUTC;
-    console.log(`Is the scheduled time in the future? ${validScheduledTime}`);
-    console.log(`Is valid future time? ${validScheduledTime}`);
 
     // Check if the scheduled time is in the future
     let publishStatus = isPublished;
@@ -165,9 +157,11 @@ export const addOrUpdatePersonAndWork = async (req, res) => {
     ['images', 'videos', 'audios', 'documents'].forEach((type) => {
       if (req.files && req.files[type]) {
         req.files[type].forEach((file) => {
-          const filePath = `${protocol}://${req.get('host')}/${slugify(
-            title
-          )}/${type}/${slugify(file.originalname)}`;
+          const filePath = `${protocol}://${req.get(
+            'host'
+          )}/${baseRoute}/${slugify(title)}/${type}/${slugify(
+            file.originalname
+          )}`;
           media[type].push({
             url: filePath,
             name: file.originalname,
@@ -329,7 +323,6 @@ export const getPersonBasics = async (req, res) => {
 
 export const deleteMultiplePersons = async (req, res) => {
   const { personIds } = req.body; // Expect an array of person IDs
-  console.log('Received person IDs for deletion:', personIds);
 
   let conn;
   try {
@@ -448,10 +441,10 @@ export const updatePersonBasicById = async (req, res) => {
     const { firstName, lastName, aboutPerson, featured } = data;
 
     let featuredImage = req.file
-      ? `${protocol}://${req.get('host')}/featured/${req.file.filename}`
+      ? `${protocol}://${req.get('host')}/${baseRoute}/featured/${
+          req.file.filename
+        }`
       : featured;
-
-    console.log(featuredImage);
 
     const query = `
             UPDATE persons
@@ -632,7 +625,6 @@ export const getPersonWithWorksAndMediaById = async (req, res) => {
   try {
     conn = await pool.getConnection();
 
-    // Directly increment the view count in the persons table
     const incrementViewCount = `
       UPDATE persons SET view_count = view_count + 1 WHERE id = ?
     `;
@@ -975,7 +967,6 @@ export const deleteMediaById = async (req, res) => {
     // Assuming your server's public directory is set up to serve files from "public"
     const urlPath = new URL(media.url).pathname; // Extracts the path from the URL
 
-    console.log(urlPath);
     const localPath = path.join(
       __dirname,
       '../public/works',

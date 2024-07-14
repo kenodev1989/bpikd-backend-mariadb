@@ -1,6 +1,9 @@
 import multer from 'multer';
 import path from 'path';
 import pool from '../db/config.js';
+import { baseRoute } from '../helpers/config.js';
+
+let protocol = process.env.PROTOCOL;
 
 /* const storage = multer.diskStorage({
   destination: "./public/uploads/footer",
@@ -82,9 +85,9 @@ export const updateFooterConfig = async (req, res) => {
 
         if (file) {
           // If a new file is uploaded, update the file path
-          filePath = `${req.protocol}://${req.get('host')}/uploads/footer/${
-            file.filename
-          }`;
+          filePath = `${protocol}://${req.get(
+            'host'
+          )}/${baseRoute}/uploads/footer/${file.filename}`;
         } else if (company.id) {
           // If no new file and id exists, attempt to reuse the existing file path
           const [existing] = await conn.query(

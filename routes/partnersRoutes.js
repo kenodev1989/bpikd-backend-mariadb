@@ -2,6 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import pool from '../db/config.js'; // Ensure your database configuration is correctly imported
+import { baseRoute } from '../helpers/config.js';
 
 const router = express.Router();
 
@@ -53,9 +54,9 @@ router.post('/', upload, async (req, res) => {
 
         if (file) {
           // If a new file is uploaded, update the file path
-          filePath = `${req.protocol}://${req.get('host')}/uploads/partners/${
-            file.filename
-          }`;
+          filePath = `${req.protocol}://${req.get(
+            'host'
+          )}/${baseRoute}/uploads/partners/${file.filename}`;
         } else if (partnerData.id) {
           // If no new file and id exists, attempt to reuse the existing file path
           const [existing] = await conn.query(

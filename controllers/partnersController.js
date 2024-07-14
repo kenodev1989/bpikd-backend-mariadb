@@ -1,4 +1,7 @@
 import pool from '../db/config';
+import { baseRoute } from '../helpers/config';
+
+let protocol = process.env.PROTOCOL;
 
 export const updateCreatePartners = async (req, res) => {
   let conn;
@@ -15,9 +18,9 @@ export const updateCreatePartners = async (req, res) => {
 
         if (file) {
           // New file uploaded, update the path
-          filePath = `${req.protocol}://${req.get('host')}/uploads/partners/${
-            file.filename
-          }`;
+          filePath = `${protocol}://${req.get(
+            'host'
+          )}/${baseRoute}/uploads/partners/${file.filename}`;
           // Overwrite logic: remove old file if new one uploaded
           fs.unlinkSync(
             `./public/uploads/partners/${company.src.split('/').pop()}`

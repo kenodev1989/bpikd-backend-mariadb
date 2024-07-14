@@ -1,6 +1,7 @@
-import fs from "fs";
-import path from "path";
-import { promisify } from "util";
+import fs from 'fs';
+import path from 'path';
+import { promisify } from 'util';
+import { query } from './db/config.js'; // Your DB configuration using ES6 imports
 
 const readdir = promisify(fs.readdir);
 const unlink = promisify(fs.unlink);
@@ -21,35 +22,32 @@ export async function cleanUpOrphanedFiles(directoryPath, validFiles) {
       }
     });
     await Promise.all(cleanupPromises);
-    console.log("Cleanup complete. Orphaned files removed.");
+    console.log('Cleanup complete. Orphaned files removed.');
   } catch (error) {
-    console.error("Error during cleanup:", error);
+    console.error('Error during cleanup:', error);
   }
 }
 
-import { cleanUpOrphanedFiles } from "./fileCleanup.js";
-import { query } from "./db/config.js"; // Your DB configuration using ES6 imports
-
 async function handleUploadsAndCleanup() {
   // Example of fetching valid filenames from a database
-  const [results] = await query("SELECT src FROM footer_companies");
+  const [results] = await query('SELECT src FROM footer_companies');
   const validFiles = new Set(
     results.map((result) => path.basename(result.src))
   );
 
   // Call the cleanup function with the directory path and valid filenames
-  await cleanUpOrphanedFiles("./public/uploads/footer", validFiles);
+  await cleanUpOrphanedFiles('./public/uploads/footer', validFiles);
 }
 
 // Run the function to handle uploads and perform cleanup
 handleUploadsAndCleanup();
 
 async function performAllCleanups() {
-  const footerFiles = await getValidFilesFromDB("footer_companies");
-  const profileFiles = await getValidFilesFromDB("profile_companies");
+  const footerFiles = await getValidFilesFromDB('footer_companies');
+  const profileFiles = await getValidFilesFromDB('profile_companies');
 
-  await cleanUpOrphanedFiles("./public/uploads/footer", footerFiles);
-  await cleanUpOrphanedFiles("./public/uploads/profiles", profileFiles);
+  await cleanUpOrphanedFiles('./public/uploads/footer', footerFiles);
+  await cleanUpOrphanedFiles('./public/uploads/profiles', profileFiles);
   // Add more directories as needed
 }
 

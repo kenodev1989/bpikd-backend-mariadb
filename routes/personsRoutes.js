@@ -23,6 +23,7 @@ import {
 } from '../controllers/personController.js';
 import pool from '../db/config.js';
 import { slugify } from '../utils/slugify.js';
+import { baseRoute } from '../helpers/config.js';
 
 const router = express.Router();
 
@@ -119,9 +120,11 @@ router.post(
       ['images', 'videos', 'audios', 'documents'].forEach((type) => {
         if (req.files && req.files[type]) {
           req.files[type].forEach((file) => {
-            const url = `${req.protocol}://${req.get('host')}/${slugify(
-              title
-            )}/${type}/${slugify(file.originalname)}`;
+            const url = `${req.protocol}://${req.get(
+              'host'
+            )}/${baseRoute}/${slugify(title)}/${type}/${slugify(
+              file.originalname
+            )}`;
             const mediaItem = {
               url: url,
               name: file.originalname,

@@ -1,8 +1,2 @@
 .env
-.local.env
-
 /node_modules
-
-/public
-/public/works
-/public/uploads

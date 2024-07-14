@@ -18,7 +18,8 @@ const backupDatabase = async () => {
   try {
     conn = await pool.getConnection();
     const tables = await conn.query('SHOW TABLES');
-    const backupDir = path.join(process.cwd(), 'public', 'backup');
+    const rootDir = path.join(__dirname, '../'); // Adjust according to where your script is located
+    const backupDir = path.join(rootDir, 'backups');
     if (!fs.existsSync(backupDir)) {
       fs.mkdirSync(backupDir, { recursive: true });
     }
@@ -66,6 +67,7 @@ const backupDatabase = async () => {
 const backupBackend = async () => {
   const rootDir = path.join(__dirname, '../'); // Adjust according to where your script is located
   const backupsDir = path.join(rootDir, 'backups');
+
   if (!fs.existsSync(backupsDir)) {
     fs.mkdirSync(backupsDir, { recursive: true });
   }
@@ -77,46 +79,70 @@ const backupBackend = async () => {
     zlib: { level: 9 }, // Sets the compression level.
   });
 
-  output.on('close', () =>
-    console.log(`Backup created: ${archive.pointer()} total bytes`)
-  );
-  output.on('end', () => console.log('Data has been drained'));
+  // Listen for all archive data to be written
+  output.on('close', () => {
+    console.log(`Backup created: ${archive.pointer()} total bytes`);
+  });
 
+  // Good practice to catch warnings (ie stat failures and other non-blocking errors)
   archive.on('warning', (err) => {
     if (err.code === 'ENOENT') {
-      console.warn(err);
+      console.warn(`File not found: ${err}`);
     } else {
-      throw err;
+      console.error(`Archiver warning: ${err}`);
     }
   });
 
+  // Catch this error explicitly
   archive.on('error', (err) => {
+    console.error(`Archiver error: ${err}`);
     throw err;
   });
 
+  // Pipe archive data to the file
   archive.pipe(output);
-  // Patterns to match files/folders to be included or excluded
+
+  // Append files from a glob pattern
   archive.glob('**/*', {
     cwd: rootDir,
-    ignore: ['node_modules/**', '.env', 'backups/**'], // Exclude specified paths
+    ignore: ['node_modules/**', 'backups/**'], // Exclude specified paths
   });
 
-  await archive.finalize();
+  // Finalize the archive (ie we are done appending files but streams have to finish yet)
+  await archive
+    .finalize()
+    .then(() => {
+      console.log('Archive finalized');
+    })
+    .catch((err) => {
+      console.error(`Error finalizing archive: ${err}`);
+      throw err;
+    });
 
   return backupPath;
 };
 
-// Assume the zipped file is stored in a 'public' or 'backups' directory
-const zipPath = path.join(__dirname, 'backups');
+// Adjust the path according to where your script is located
+const rootDir = path.join(__dirname, '../');
+// Ensure this points directly to the file you intend to send, not a directory
+const backupFilePath = path.join(rootDir, 'backups', 'react_build.zip');
 
 router.get('/react-build', async (req, res) => {
+  // Setting no timeout for a download might be necessary if it's a large file
+  req.setTimeout(0); // Be cautious with setting no timeout in a production environment
+
+  console.log('Attempting to send file:', backupFilePath);
   try {
-    res.download(zipPath, 'react_build.zip', (err) => {
+    res.download(backupFilePath, 'react_build.zip', (err) => {
       if (err) {
+        // Log the error for server-side debugging
+        console.error('Download error:', err);
+        // Send a more detailed error response or keep it generic based on your error handling policy
         res.status(500).send('Failed to download the file.');
       }
     });
   } catch (error) {
+    console.error('Error encountered:', error);
     res.status(500).send('Error preparing the download.');
   }
 });
