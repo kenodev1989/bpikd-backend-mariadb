@@ -1,1 +1,1 @@
-export const baseRoute = process.env.BASE_ROUTE;
+export const baseRoute = process.env.BASE_ROUTE || '';

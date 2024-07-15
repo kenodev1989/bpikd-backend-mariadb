@@ -96,14 +96,14 @@ router.put(
   updatePersonBasicById
 );
 router
-  .route('/:title')
+  .route('/:title/:fullName')
   .post(verifyToken, uploadMedia, addOrUpdatePersonAndWork);
 
 router.delete('/media/:mediaId', deleteMediaById);
 
 // POST route to handle media uploads for a specific work
 router.post(
-  '/work/:workId/media',
+  '/work/:workId/:fullName/media',
   fetchTitle,
   uploadMedia,
   async (req, res) => {
@@ -111,6 +111,9 @@ router.post(
     let media = { images: [], videos: [], audios: [], documents: [] };
 
     const title = req.workTitle;
+    const { fullName } = req.params;
+
+    console.log(fullName);
 
     let conn;
     try {
@@ -122,9 +125,9 @@ router.post(
           req.files[type].forEach((file) => {
             const url = `${req.protocol}://${req.get(
               'host'
-            )}/${baseRoute}/${slugify(title)}/${type}/${slugify(
-              file.originalname
-            )}`;
+            )}/person-of-interest/${fullName}/${slugify(
+              title
+            )}/${type}/${slugify(file.originalname)}`;
             const mediaItem = {
               url: url,
               name: file.originalname,
@@ -251,7 +254,7 @@ router.get('/works/:workId', async (req, res) => {
 
 router.get('/data/:personId', getPersonWithWorksAndMediaById);
 router.get('/work/:workId', getWorkWithMediaById);
-router.put('/work/:workId', updateWorkById);
+router.put('/work/:workId/:fullName', updateWorkById);
 router.delete('/work/:workId', deleteWorkById);
 // Route to delete a single person
 router.delete('/:personId', deletePerson);

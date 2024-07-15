@@ -12,7 +12,6 @@ import * as schedule from 'node-schedule';
 
 import moment from 'moment-timezone';
 import { slugify } from '../utils/slugify.js';
-import { baseRoute } from '../helpers/config.js';
 
 const app = express();
 app.use(bodyParser.urlencoded({ extended: true })); // o
@@ -79,7 +78,7 @@ export const addOrUpdatePersonAndWork = async (req, res) => {
 
     let featuredImage =
       req.files && req.files.featuredImage && req.files.featuredImage[0]
-        ? `${protocol}://${req.get('host')}/${baseRoute}/featured/${
+        ? `${protocol}://${req.get('host')}/featured/${
             req.files.featuredImage[0].filename
           }`
         : null;
@@ -147,6 +146,9 @@ export const addOrUpdatePersonAndWork = async (req, res) => {
 
     const workId = workResult.insertId;
 
+    const fullName =
+      personData && slugify(`${personData.firstName}-${personData.lastName}`);
+
     if (!publishStatus && validScheduledTime) {
       // Schedule a job to publish the work at the specified UTC time
       schedulePublication(workId, scheduledTimeUTC, pool);
@@ -159,7 +161,7 @@ export const addOrUpdatePersonAndWork = async (req, res) => {
         req.files[type].forEach((file) => {
           const filePath = `${protocol}://${req.get(
             'host'
-          )}/${baseRoute}/${slugify(title)}/${type}/${slugify(
+          )}/person-of-interest/${fullName}/${slugify(title)}/${type}/${slugify(
             file.originalname
           )}`;
           media[type].push({
@@ -441,9 +443,7 @@ export const updatePersonBasicById = async (req, res) => {
     const { firstName, lastName, aboutPerson, featured } = data;
 
     let featuredImage = req.file
-      ? `${protocol}://${req.get('host')}/${baseRoute}/featured/${
-          req.file.filename
-        }`
+      ? `${protocol}://${req.get('host')}/featured/${req.file.filename}`
       : featured;
 
     const query = `
@@ -806,8 +806,11 @@ const mediaStorage = multer.diskStorage({
     let destPath;
 
     const { title } = req.params;
+    const { fullName } = req.params;
 
     const slugifyTitle = req.workTitle ? req.workTitle : slugify(title);
+
+    const slugifyName = fullName && slugify(fullName);
 
     if (file.fieldname === 'featuredImage') {
       // Special destination for featured images
@@ -823,7 +826,7 @@ const mediaStorage = multer.diskStorage({
       const folderName = folderMap[fileType] || 'others';
       destPath = path.join(
         __dirname,
-        '../public/works',
+        '../public/works/person-of-interest/' + slugifyName,
         slugifyTitle,
         folderName
       );
@@ -884,6 +887,7 @@ function checkFileType(file, cb) {
 // controllers/workController.js
 export const updateWorkById = async (req, res) => {
   const { workId } = req.params;
+
   const {
     title,
     content,
